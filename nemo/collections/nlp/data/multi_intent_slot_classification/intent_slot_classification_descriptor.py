@@ -108,7 +108,6 @@ class IntentSlotDataDesc:
                 raw_slots.append(slot_list)
                 parts = input_line.strip().split("\t")[1:]
                 parts = list(map(int, data))
-                # Now adding lists
                 raw_intents.append(parts)
 
             logging.info(f'Three most popular intents in {mode} mode:')
