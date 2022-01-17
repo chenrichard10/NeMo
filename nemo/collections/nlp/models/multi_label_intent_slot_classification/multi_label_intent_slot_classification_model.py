@@ -21,7 +21,7 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 
-from nemo.collections.common.losses import AggregatorLoss, CrossEntropyLoss
+from nemo.collections.common.losses import AggregatorLoss, CrossEntropyLoss, BCELoss
 from nemo.collections.nlp.data.intent_slot_classification import (
     IntentSlotClassificationDataset,
     IntentSlotDataDesc,
@@ -163,10 +163,10 @@ class MultiIntentSlotClassificationModel(NLPModel):
         # define losses
         if self.cfg.class_balancing == 'weighted_loss':
             # You may need to increase the number of epochs for convergence when using weighted_loss
-            self.intent_loss = CrossEntropyLoss(logits_ndim=2, weight=self.cfg.data_desc.intent_weights)
+            self.intent_loss = BCELoss(logits_ndim=2, weight=self.cfg.data_desc.intent_weights)
             self.slot_loss = CrossEntropyLoss(logits_ndim=3, weight=self.cfg.data_desc.slot_weights)
         else:
-            self.intent_loss = CrossEntropyLoss(logits_ndim=2)
+            self.intent_loss = BCELoss(logits_ndim=2)
             self.slot_loss = CrossEntropyLoss(logits_ndim=3)
 
         self.total_loss = AggregatorLoss(
@@ -266,7 +266,7 @@ class MultiIntentSlotClassificationModel(NLPModel):
 
         # calculate accuracy metrics for intents and slot reporting
         # intents
-        preds = torch.argmax(intent_logits, axis=-1)
+        preds = torch.sigmoid(intent_logits, axis=-1)
         self.intent_classification_report.update(preds, intent_labels)
         # slots
         subtokens_mask = subtokens_mask > 0.5
@@ -440,15 +440,18 @@ class MultiIntentSlotClassificationModel(NLPModel):
 
                 # predict intents and slots for these examples
                 # intents
-                intent_preds = tensor2list(torch.argmax(intent_logits, axis=-1))
+                intent_preds = tensor2list(torch.sigmoid(intent_logits, axis=-1))
 
                 # convert numerical outputs to Intent and Slot labels from the dictionaries
-                for intent_num in intent_preds:
-                    if intent_num < len(intent_labels):
-                        predicted_intents.append(intent_labels[int(intent_num)])
-                    else:
-                        # should not happen
-                        predicted_intents.append("Unknown Intent")
+                for intents in intent_preds:
+                    intent_lst = []
+                    for intent_num in intents:
+                        if intent < len(intents):
+                            intent_lst.append(intent_labels[int(intent_num)])
+                        else:
+                            # should not happen
+                            intent_lst.append("Unknown Intent")
+                    predicted_intents.append(intent_lst)
 
                 # slots
                 slot_preds = torch.argmax(slot_logits, axis=-1)
