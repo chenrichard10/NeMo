@@ -22,7 +22,7 @@ from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 
 from nemo.collections.common.losses import AggregatorLoss, CrossEntropyLoss, BCELoss
-from nemo.collections.nlp.data.intent_slot_classification import (
+from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
     IntentSlotClassificationDataset,
     IntentSlotDataDesc,
     IntentSlotInferenceDataset,
@@ -38,7 +38,7 @@ from nemo.core.neural_types import NeuralType
 from nemo.utils import logging
 
 
-class MultiIntentSlotClassificationModel(NLPModel):
+class MultiLabelIntentSlotClassificationModel(NLPModel):
     @property
     def input_types(self) -> Optional[Dict[str, NeuralType]]:
         return self.bert_model.input_types
@@ -58,7 +58,7 @@ class MultiIntentSlotClassificationModel(NLPModel):
         # Check the presence of data_dir.
         if not cfg.data_dir or not os.path.exists(cfg.data_dir):
             # Disable setup methods.
-            MultiIntentSlotClassificationModel._set_model_restore_state(is_being_restored=True)
+            MultiLabelIntentSlotClassificationModel._set_model_restore_state(is_being_restored=True)
             # Set default values of data_desc.
             self._set_defaults_data_desc(cfg)
         else:
@@ -81,7 +81,7 @@ class MultiIntentSlotClassificationModel(NLPModel):
         )
 
         # Enable setup methods.
-        MultiIntentSlotClassificationModel._set_model_restore_state(is_being_restored=False)
+        MultiLabelIntentSlotClassificationModel._set_model_restore_state(is_being_restored=False)
 
         # Initialize Classifier.
         self._reconfigure_classifier()

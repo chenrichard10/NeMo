@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from nemo.collections.nlp.models.multi_label_intent_slot_classification.multi_label_intent_slot_classification_model import (
-    MultiIntentSlotClassificationModel,
+    MultiLabelIntentSlotClassificationModel,
 )
