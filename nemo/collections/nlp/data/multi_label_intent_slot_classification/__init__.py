@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from nemo.collections.common.losses.aggregator import AggregatorLoss
-from nemo.collections.common.losses.bce_loss import BCELoss
-from nemo.collections.common.losses.cross_entropy import CrossEntropyLoss, NLLLoss
-from nemo.collections.common.losses.mse_loss import MSELoss
-from nemo.collections.common.losses.multi_similarity_loss import MultiSimilarityLoss
-from nemo.collections.common.losses.smoothed_cross_entropy import SmoothedCrossEntropyLoss
-from nemo.collections.common.losses.spanning_loss import SpanningLoss
+
+from nemo.collections.nlp.data.multi_label_intent_slot_classification.multi_label_intent_slot_classification_dataset import (
+    MultiLabelIntentSlotClassificationDataset,
+    MultiLabelIntentSlotInferenceDataset,
+)
+from nemo.collections.nlp.data.multi_label_intent_slot_classification.multi_label_intent_slot_classification_descriptor import (
+    MultiLabelMultiLabelIntentSlotDataDesc,
+)
