@@ -24,7 +24,7 @@ from nemo.core.classes import Dataset
 from nemo.core.neural_types import ChannelType, LabelsType, MaskType, NeuralType
 from nemo.utils import logging
 
-__all__ = ['IntentSlotClassificationDataset', 'IntentSlotInferenceDataset']
+__all__ = ['MultiLabelIntentSlotClassificationDataset', 'MultiLabelIntentSlotInferenceDataset']
 
 
 def get_features(
@@ -134,7 +134,7 @@ def get_features(
     return (all_input_ids, all_segment_ids, all_input_mask, all_loss_mask, all_subtokens_mask, all_slots)
 
 
-class IntentSlotClassificationDataset(Dataset):
+class MultiLabelIntentSlotClassificationDataset(Dataset):
     """
     Creates dataset to use for the task of joint intent
     and slot classification with pretrained model.
@@ -244,7 +244,7 @@ class IntentSlotClassificationDataset(Dataset):
         )
 
 
-class IntentSlotInferenceDataset(Dataset):
+class MultiLabelIntentSlotInferenceDataset(Dataset):
     """
     Creates dataset to use for the task of joint intent
     and slot classification with pretrained model.

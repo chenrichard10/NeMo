@@ -23,9 +23,9 @@ from torch.utils.data import DataLoader
 
 from nemo.collections.common.losses import AggregatorLoss, CrossEntropyLoss, BCELoss
 from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
-    IntentSlotClassificationDataset,
-    IntentSlotDataDesc,
-    IntentSlotInferenceDataset,
+    MultiLabelMultiLabelIntentSlotClassificationDataset,
+    MultiLabelMultiLabelIntentSlotDataDesc,
+    MultiLabelMultiLabelIntentSlotInferenceDataset,
 )
 from nemo.collections.nlp.metrics.classification_report import ClassificationReport
 from nemo.collections.nlp.models.nlp_model import NLPModel
@@ -107,9 +107,9 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             OmegaConf.set_struct(cfg, True)
 
     def _set_data_desc_to_cfg(self, cfg, data_dir, train_ds, validation_ds):
-        """ Method creates IntentSlotDataDesc and copies generated values to cfg.data_desc. """
+        """ Method creates MultiLabelIntentSlotDataDesc and copies generated values to cfg.data_desc. """
         # Save data from data desc to config - so it can be reused later, e.g. in inference.
-        data_desc = IntentSlotDataDesc(data_dir=data_dir, modes=[train_ds.prefix, validation_ds.prefix])
+        data_desc = MultiLabelIntentSlotDataDesc(data_dir=data_dir, modes=[train_ds.prefix, validation_ds.prefix])
         OmegaConf.set_struct(cfg, False)
         if not hasattr(cfg, "data_desc") or cfg.data_desc is None:
             cfg.data_desc = {}
@@ -352,7 +352,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
                  of Intents and Slots files.'
             )
 
-        dataset = IntentSlotClassificationDataset(
+        dataset = MultiLabelIntentSlotClassificationDataset(
             input_file=input_file,
             slot_file=slot_file,
             tokenizer=self.tokenizer,
@@ -383,7 +383,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             A pytorch DataLoader.
         """
 
-        dataset = IntentSlotInferenceDataset(
+        dataset = MultiLabelIntentSlotInferenceDataset(
             tokenizer=self.tokenizer, queries=queries, max_seq_length=-1, do_lower_case=False
         )
 
