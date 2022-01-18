@@ -24,13 +24,13 @@ from nemo.collections.nlp.data.data_utils.data_preprocessing import (
 from nemo.utils import logging
 
 
-class IntentSlotDataDesc:
+class MultiLabelMultiLabelIntentSlotDataDesc:
     """ Convert the raw data to the standard format supported by
-    IntentSlotDataDesc.
+    MultiLabelIntentSlotDataDesc.
 
     By default, the None label for slots is 'O'.
 
-    IntentSlotDataDesc requires two files:
+    MultiLabelIntentSlotDataDesc requires two files:
 
         input_file: file to sequence + label.
             the first line is header (sentence [tab] label)
@@ -74,9 +74,9 @@ class IntentSlotDataDesc:
         self.intent_dict_file = self.data_dir + '/dict.intents.csv'
         self.slot_dict_file = self.data_dir + '/dict.slots.csv'
 
-        self.intents_label_ids = IntentSlotDataDesc.label2idx(self.intent_dict_file)
+        self.intents_label_ids = MultiLabelIntentSlotDataDesc.label2idx(self.intent_dict_file)
         self.num_intents = len(self.intents_label_ids)
-        self.slots_label_ids = IntentSlotDataDesc.label2idx(self.slot_dict_file)
+        self.slots_label_ids = MultiLabelIntentSlotDataDesc.label2idx(self.slot_dict_file)
         self.num_slots = len(self.slots_label_ids)
 
         infold = self.data_dir
@@ -108,7 +108,6 @@ class IntentSlotDataDesc:
                 raw_slots.append(slot_list)
                 parts = input_line.strip().split("\t")[1:]
                 parts = list(map(int, data))
-                # Now adding lists
                 raw_intents.append(parts)
 
             logging.info(f'Three most popular intents in {mode} mode:')
