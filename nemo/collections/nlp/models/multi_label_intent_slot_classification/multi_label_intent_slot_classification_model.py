@@ -23,9 +23,9 @@ from torch.utils.data import DataLoader
 
 from nemo.collections.common.losses import AggregatorLoss, CrossEntropyLoss, BCELoss
 from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
-    MultiLabelMultiLabelIntentSlotClassificationDataset,
-    MultiLabelMultiLabelIntentSlotDataDesc,
-    MultiLabelMultiLabelIntentSlotInferenceDataset,
+    MultiLabelIntentSlotClassificationDataset,
+    MultiLabelIntentSlotDataDesc,
+    MultiLabelIntentSlotInferenceDataset,
 )
 from nemo.collections.nlp.metrics.classification_report import ClassificationReport
 from nemo.collections.nlp.models.nlp_model import NLPModel
@@ -54,7 +54,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         # Setup tokenizer.
         self.setup_tokenizer(cfg.tokenizer)
-
+        
         # Check the presence of data_dir.
         if not cfg.data_dir or not os.path.exists(cfg.data_dir):
             # Disable setup methods.
@@ -212,7 +212,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         logging.info(f'Setting data_dir to {data_dir}.')
         self.data_dir = data_dir
 
-    @typecheck()
+    #@typecheck()
     def forward(self, input_ids, token_type_ids, attention_mask):
         """
         No special modification required for Lightning, define it as you normally would
@@ -266,7 +266,9 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         # calculate accuracy metrics for intents and slot reporting
         # intents
-        preds = torch.sigmoid(intent_logits, axis=-1)
+        preds = torch.round(torch.sigmoid(intent_logits))
+        print("PREDICTIONS")
+        print(preds)
         self.intent_classification_report.update(preds, intent_labels)
         # slots
         subtokens_mask = subtokens_mask > 0.5
@@ -440,18 +442,24 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
                 # predict intents and slots for these examples
                 # intents
-                intent_preds = tensor2list(torch.sigmoid(intent_logits, axis=-1))
+                intent_preds = tensor2list(torch.sigmoid(intent_logits))
 
+                print("Intent Predictions:")
+                print(intent_preds)
                 # convert numerical outputs to Intent and Slot labels from the dictionaries
                 for intents in intent_preds:
                     intent_lst = []
-                    for intent_num in intents:
-                        if intent < len(intents):
+                    for intent_num, probability in enumerate(intents):
+                        if probability > 0.5:
+                            print(probability)
                             intent_lst.append(intent_labels[int(intent_num)])
-                        else:
-                            # should not happen
-                            intent_lst.append("Unknown Intent")
+                        # else:
+                        #     # should not happen
+                        #     intent_lst.append("Unknown Intent")
                     predicted_intents.append(intent_lst)
+
+                print("PREDICTED INTENTS:")
+                print(predicted_intents)
 
                 # slots
                 slot_preds = torch.argmax(slot_logits, axis=-1)
