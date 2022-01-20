@@ -168,7 +168,7 @@ class MultiLabelIntentSlotClassificationDataset(Dataset):
             'input_mask': NeuralType(('B', 'T'), MaskType()),
             'loss_mask': NeuralType(('B', 'T'), MaskType()),
             'subtokens_mask': NeuralType(('B', 'T'), MaskType()),
-            'intent_labels': NeuralType(('B'), LabelsType()),
+            'intent_labels': [NeuralType(('B'), LabelsType())],
             'slot_labels': NeuralType(('B', 'T'), LabelsType()),
         }
 
@@ -204,7 +204,7 @@ class MultiLabelIntentSlotClassificationDataset(Dataset):
         for slot_line, input_line in dataset:
             raw_slots.append([int(slot) for slot in slot_line.strip().split()])
             parts = input_line.strip().split("\t")[1:]
-            parts = list(map(int, data))
+            parts = tuple(map(int, parts))
             raw_intents.append(parts)
             tokens = input_line.strip().split("\t")[0].split()
             query = ' '.join(tokens)

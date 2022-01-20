@@ -24,7 +24,7 @@ from nemo.collections.nlp.data.data_utils.data_preprocessing import (
 from nemo.utils import logging
 
 
-class MultiLabelMultiLabelIntentSlotDataDesc:
+class MultiLabelIntentSlotDataDesc:
     """ Convert the raw data to the standard format supported by
     MultiLabelIntentSlotDataDesc.
 
@@ -107,7 +107,7 @@ class MultiLabelMultiLabelIntentSlotDataDesc:
                 slot_list = [int(slot) for slot in slot_line.strip().split()]
                 raw_slots.append(slot_list)
                 parts = input_line.strip().split("\t")[1:]
-                parts = list(map(int, data))
+                parts = tuple(map(int, parts))
                 raw_intents.append(parts)
 
             logging.info(f'Three most popular intents in {mode} mode:')

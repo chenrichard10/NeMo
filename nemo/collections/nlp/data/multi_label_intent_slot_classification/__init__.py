@@ -18,5 +18,5 @@ from nemo.collections.nlp.data.multi_label_intent_slot_classification.multi_labe
     MultiLabelIntentSlotInferenceDataset,
 )
 from nemo.collections.nlp.data.multi_label_intent_slot_classification.multi_label_intent_slot_classification_descriptor import (
-    MultiLabelMultiLabelIntentSlotDataDesc,
+    MultiLabelIntentSlotDataDesc,
 )
