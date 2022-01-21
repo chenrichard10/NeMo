@@ -21,13 +21,14 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 
-from nemo.collections.common.losses import AggregatorLoss, CrossEntropyLoss, BCELoss
+from nemo.collections.common.losses import AggregatorLoss, BCELoss, CrossEntropyLoss
 from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
     MultiLabelIntentSlotClassificationDataset,
     MultiLabelIntentSlotDataDesc,
     MultiLabelIntentSlotInferenceDataset,
 )
 from nemo.collections.nlp.metrics.classification_report import ClassificationReport
+from nemo.collections.nlp.metrics.multi_label_classification_report import MultiLabelClassificationReport
 from nemo.collections.nlp.models.nlp_model import NLPModel
 from nemo.collections.nlp.modules.common import SequenceTokenClassifier
 from nemo.collections.nlp.modules.common.lm_utils import get_lm_model
@@ -54,7 +55,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         # Setup tokenizer.
         self.setup_tokenizer(cfg.tokenizer)
-        
+
         # Check the presence of data_dir.
         if not cfg.data_dir or not os.path.exists(cfg.data_dir):
             # Disable setup methods.
@@ -162,6 +163,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         # define losses
         if self.cfg.class_balancing == 'weighted_loss':
+            print("WEIGHTED LOSS")
             # You may need to increase the number of epochs for convergence when using weighted_loss
             self.intent_loss = BCELoss(logits_ndim=2, weight=self.cfg.data_desc.intent_weights)
             self.slot_loss = CrossEntropyLoss(logits_ndim=3, weight=self.cfg.data_desc.slot_weights)
@@ -174,7 +176,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         )
 
         # setup to track metrics
-        self.intent_classification_report = ClassificationReport(
+        self.intent_classification_report = MultiLabelClassificationReport(
             num_classes=len(self.cfg.data_desc.intent_labels),
             label_ids=self.cfg.data_desc.intent_label_ids,
             dist_sync_on_step=True,
@@ -212,8 +214,8 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         logging.info(f'Setting data_dir to {data_dir}.')
         self.data_dir = data_dir
 
-    #@typecheck()
-    def forward(self, input_ids, token_type_ids, attention_mask):
+    # @typecheck()
+git    def forward(self, input_ids, token_type_ids, attention_mask):
         """
         No special modification required for Lightning, define it as you normally would
         in the `nn.Module` in vanilla PyTorch.
@@ -266,9 +268,10 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         # calculate accuracy metrics for intents and slot reporting
         # intents
-        preds = torch.round(torch.sigmoid(intent_logits))
-        print("PREDICTIONS")
-        print(preds)
+        # print("ROUNDING:")
+        preds = torch.round(torch.sigmoid(intent_logits)).int()
+        # print("PREDICTIONS")
+        # print(preds)
         self.intent_classification_report.update(preds, intent_labels)
         # slots
         subtokens_mask = subtokens_mask > 0.5
@@ -443,7 +446,6 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
                 # predict intents and slots for these examples
                 # intents
                 intent_preds = tensor2list(torch.sigmoid(intent_logits))
-
                 print("Intent Predictions:")
                 print(intent_preds)
                 # convert numerical outputs to Intent and Slot labels from the dictionaries
