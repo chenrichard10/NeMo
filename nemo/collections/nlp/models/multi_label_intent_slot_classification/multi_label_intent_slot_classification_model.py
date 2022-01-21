@@ -215,7 +215,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         self.data_dir = data_dir
 
     # @typecheck()
-git    def forward(self, input_ids, token_type_ids, attention_mask):
+    def forward(self, input_ids, token_type_ids, attention_mask):
         """
         No special modification required for Lightning, define it as you normally would
         in the `nn.Module` in vanilla PyTorch.
