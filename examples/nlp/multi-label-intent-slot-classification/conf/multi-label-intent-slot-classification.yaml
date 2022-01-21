@@ -32,7 +32,7 @@ model:
     batch_size: 32
     shuffle: true
     num_samples: -1
-    num_workers: 4
+    num_workers: 8
     drop_last: false
     pin_memory: false
 
@@ -41,7 +41,7 @@ model:
     batch_size: 32
     shuffle: false
     num_samples: -1
-    num_workers: 2
+    num_workers: 8
     drop_last: false
     pin_memory: false
 
@@ -50,7 +50,7 @@ model:
     batch_size: 32
     shuffle: false
     num_samples: -1
-    num_workers: 2
+    num_workers: 8
     drop_last: false
     pin_memory: false
 

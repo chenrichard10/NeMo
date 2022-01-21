@@ -14,7 +14,6 @@ if __name__ == "__main__":
 
     from omegaconf import OmegaConf
 
-
     DOCKER = False
 
     if DOCKER:
@@ -24,9 +23,11 @@ if __name__ == "__main__":
 
     # directory with data converted to nemo format
     data_dir = os.path.join(HOME_DIR, "multiatis")
-    
+
     run_name = "test"
-    config_file = os.path.join("/home/rchen/NeMo/examples/nlp/multi-label-intent-slot-classification/conf/multi-label-intent-slot-classification.yaml")
+    config_file = os.path.join(
+        "/home/rchen/NeMo/examples/nlp/multi-label-intent-slot-classification/conf/multi-label-intent-slot-classification.yaml"
+    )
     config = OmegaConf.load(config_file)
     config.model.data_dir = data_dir
     config.model.validation_ds.prefix = "dev"
@@ -35,7 +36,6 @@ if __name__ == "__main__":
     config.model.class_balancing = "weighted_loss"
     config.model.head.num_output_layers = 1
     config.trainer.max_epochs = 10
-
 
     # checks if we have GPU available and uses it
     cuda = 1 if torch.cuda.is_available() else 0

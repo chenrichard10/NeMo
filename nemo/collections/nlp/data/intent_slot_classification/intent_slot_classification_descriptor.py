@@ -106,10 +106,8 @@ class IntentSlotDataDesc:
             for slot_line, input_line in dataset:
                 slot_list = [int(slot) for slot in slot_line.strip().split()]
                 raw_slots.append(slot_list)
-                parts = input_line.strip().split("\t")[1:]
-                parts = list(map(int, data))
-                # Now adding lists
-                raw_intents.append(parts)
+                parts = input_line.strip().split()
+                raw_intents.append(int(parts[-1]))
 
             logging.info(f'Three most popular intents in {mode} mode:')
             total_intents, intent_label_freq, max_id = get_label_stats(

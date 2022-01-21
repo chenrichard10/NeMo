@@ -20,6 +20,7 @@ from nemo.core.neural_types import LabelsType, LogitsType, LogprobsType, LossTyp
 
 __all__ = ['BCELoss']
 
+
 class BCELoss(nn.BCEWithLogitsLoss, Serialization, Typing):
     """
     BCELoss
@@ -80,10 +81,7 @@ class BCELoss(nn.BCEWithLogitsLoss, Serialization, Typing):
         # return loss
         # Labels are currently a list of tensors, which is an unsupported type
         labels = torch.stack(labels)
-        # https://discuss.pytorch.org/t/multi-label-binary-classification-result-type-float-cant-be-cast-to-the-desired-output-type-long/117915 
+        # https://discuss.pytorch.org/t/multi-label-binary-classification-result-type-float-cant-be-cast-to-the-desired-output-type-long/117915
         # Cast labels from long to float
         labels = labels.t().float()
         return super().forward(logits, labels)
-
-
-
