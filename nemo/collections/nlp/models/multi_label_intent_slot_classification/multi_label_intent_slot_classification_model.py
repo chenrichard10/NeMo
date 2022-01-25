@@ -21,7 +21,7 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 
-from nemo.collections.common.losses import AggregatorLoss, BCELoss, CrossEntropyLoss
+from nemo.collections.common.losses import AggregatorLoss, BCEWithLogitsLoss, CrossEntropyLoss
 from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
     MultiLabelIntentSlotClassificationDataset,
     MultiLabelIntentSlotDataDesc,
@@ -73,12 +73,12 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         # Initialize Bert model
         self.bert_model = get_lm_model(
             pretrained_model_name=self.cfg.language_model.pretrained_model_name,
-            config_file=self.register_artifact('language_model.config_file', cfg.language_model.config_file),
+            config_file=self.register_artifact("language_model.config_file", cfg.language_model.config_file),
             config_dict=OmegaConf.to_container(self.cfg.language_model.config)
             if self.cfg.language_model.config
             else None,
             checkpoint_file=self.cfg.language_model.lm_checkpoint,
-            vocab_file=self.register_artifact('tokenizer.vocab_file', cfg.tokenizer.vocab_file),
+            vocab_file=self.register_artifact("tokenizer.vocab_file", cfg.tokenizer.vocab_file),
         )
 
         # Enable setup methods.
@@ -129,7 +129,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         if not hasattr(cfg, "class_labels") or cfg.class_labels is None:
             cfg.class_labels = {}
             cfg.class_labels = OmegaConf.create(
-                {'intent_labels_file': 'intent_labels.csv', 'slot_labels_file': 'slot_labels.csv'}
+                {"intent_labels_file": "intent_labels.csv", "slot_labels_file": "slot_labels.csv",}
             )
 
         slot_labels_file = os.path.join(data_dir, cfg.class_labels.slot_labels_file)
@@ -137,17 +137,17 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         self._save_label_ids(data_desc.slots_label_ids, slot_labels_file)
         self._save_label_ids(data_desc.intents_label_ids, intent_labels_file)
 
-        self.register_artifact('class_labels.intent_labels_file', intent_labels_file)
-        self.register_artifact('class_labels.slot_labels_file', slot_labels_file)
+        self.register_artifact("class_labels.intent_labels_file", intent_labels_file)
+        self.register_artifact("class_labels.slot_labels_file", slot_labels_file)
         OmegaConf.set_struct(cfg, True)
 
     def _save_label_ids(self, label_ids: Dict[str, int], filename: str) -> None:
         """ Saves label ids map to a file """
-        with open(filename, 'w') as out:
+        with open(filename, "w") as out:
             labels, _ = zip(*sorted(label_ids.items(), key=lambda x: x[1]))
-            out.write('\n'.join(labels))
-            logging.info(f'Labels: {label_ids}')
-            logging.info(f'Labels mapping saved to : {out.name}')
+            out.write("\n".join(labels))
+            logging.info(f"Labels: {label_ids}")
+            logging.info(f"Labels mapping saved to : {out.name}")
 
     def _reconfigure_classifier(self):
         """ Method reconfigures the classifier depending on the settings of model cfg.data_desc """
@@ -162,17 +162,16 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         )
 
         # define losses
-        if self.cfg.class_balancing == 'weighted_loss':
-            print("WEIGHTED LOSS")
+        if self.cfg.class_balancing == "weighted_loss":
             # You may need to increase the number of epochs for convergence when using weighted_loss
-            self.intent_loss = BCELoss(logits_ndim=2, weight=self.cfg.data_desc.intent_weights)
+            self.intent_loss = BCEWithLogitsLoss(logits_ndim=2, pos_weight=self.cfg.data_desc.intent_weights)
             self.slot_loss = CrossEntropyLoss(logits_ndim=3, weight=self.cfg.data_desc.slot_weights)
         else:
-            self.intent_loss = BCELoss(logits_ndim=2)
+            self.intent_loss = BCEWithLogitsLoss(logits_ndim=2)
             self.slot_loss = CrossEntropyLoss(logits_ndim=3)
 
         self.total_loss = AggregatorLoss(
-            num_inputs=2, weights=[self.cfg.intent_loss_weight, 1.0 - self.cfg.intent_loss_weight]
+            num_inputs=2, weights=[self.cfg.intent_loss_weight, 1.0 - self.cfg.intent_loss_weight],
         )
 
         # setup to track metrics
@@ -180,13 +179,13 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             num_classes=len(self.cfg.data_desc.intent_labels),
             label_ids=self.cfg.data_desc.intent_label_ids,
             dist_sync_on_step=True,
-            mode='micro',
+            mode="micro",
         )
         self.slot_classification_report = ClassificationReport(
             num_classes=len(self.cfg.data_desc.slot_labels),
             label_ids=self.cfg.data_desc.slot_label_ids,
             dist_sync_on_step=True,
-            mode='micro',
+            mode="micro",
         )
 
     def update_data_dir_for_training(self, data_dir: str, train_ds, validation_ds) -> None:
@@ -197,7 +196,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         Args:
             data_dir: path to data directory
         """
-        logging.info(f'Setting data_dir to {data_dir}.')
+        logging.info(f"Setting data_dir to {data_dir}.")
         self.data_dir = data_dir
         # Update configuration with new data.
         self._set_data_desc_to_cfg(self.cfg, data_dir, train_ds, validation_ds)
@@ -211,17 +210,17 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         Args:
             data_dir: path to data directory
         """
-        logging.info(f'Setting data_dir to {data_dir}.')
+        logging.info(f"Setting data_dir to {data_dir}.")
         self.data_dir = data_dir
 
-    # @typecheck()
+    @typecheck()
     def forward(self, input_ids, token_type_ids, attention_mask):
         """
         No special modification required for Lightning, define it as you normally would
         in the `nn.Module` in vanilla PyTorch.
         """
         hidden_states = self.bert_model(
-            input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask
+            input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
         )
         intent_logits, slot_logits = self.classifier(hidden_states=hidden_states)
         return intent_logits, slot_logits
@@ -232,23 +231,23 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         passed in as `batch`.
         """
         # forward pass
-        input_ids, input_type_ids, input_mask, loss_mask, subtokens_mask, intent_labels, slot_labels = batch
+        (input_ids, input_type_ids, input_mask, loss_mask, subtokens_mask, intent_labels, slot_labels,) = batch
         intent_logits, slot_logits = self(
-            input_ids=input_ids, token_type_ids=input_type_ids, attention_mask=input_mask
+            input_ids=input_ids, token_type_ids=input_type_ids, attention_mask=input_mask,
         )
 
         # calculate combined loss for intents and slots
         intent_loss = self.intent_loss(logits=intent_logits, labels=intent_labels)
         slot_loss = self.slot_loss(logits=slot_logits, labels=slot_labels, loss_mask=loss_mask)
         train_loss = self.total_loss(loss_1=intent_loss, loss_2=slot_loss)
-        lr = self._optimizer.param_groups[0]['lr']
+        lr = self._optimizer.param_groups[0]["lr"]
 
-        self.log('train_loss', train_loss)
-        self.log('lr', lr, prog_bar=True)
+        self.log("train_loss", train_loss)
+        self.log("lr", lr, prog_bar=True)
 
         return {
-            'loss': train_loss,
-            'lr': lr,
+            "loss": train_loss,
+            "lr": lr,
         }
 
     def validation_step(self, batch, batch_idx):
@@ -256,9 +255,9 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         Lightning calls this inside the validation loop with the data from the validation dataloader
         passed in as `batch`.
         """
-        input_ids, input_type_ids, input_mask, loss_mask, subtokens_mask, intent_labels, slot_labels = batch
+        (input_ids, input_type_ids, input_mask, loss_mask, subtokens_mask, intent_labels, slot_labels,) = batch
         intent_logits, slot_logits = self(
-            input_ids=input_ids, token_type_ids=input_type_ids, attention_mask=input_mask
+            input_ids=input_ids, token_type_ids=input_type_ids, attention_mask=input_mask,
         )
 
         # calculate combined loss for intents and slots
@@ -268,10 +267,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         # calculate accuracy metrics for intents and slot reporting
         # intents
-        # print("ROUNDING:")
         preds = torch.round(torch.sigmoid(intent_logits)).int()
-        # print("PREDICTIONS")
-        # print(preds)
         self.intent_classification_report.update(preds, intent_labels)
         # slots
         subtokens_mask = subtokens_mask > 0.5
@@ -280,13 +276,13 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         self.slot_classification_report.update(preds, slot_labels)
 
         return {
-            'val_loss': val_loss,
-            'intent_tp': self.intent_classification_report.tp,
-            'intent_fn': self.intent_classification_report.fn,
-            'intent_fp': self.intent_classification_report.fp,
-            'slot_tp': self.slot_classification_report.tp,
-            'slot_fn': self.slot_classification_report.fn,
-            'slot_fp': self.slot_classification_report.fp,
+            "val_loss": val_loss,
+            "intent_tp": self.intent_classification_report.tp,
+            "intent_fn": self.intent_classification_report.fn,
+            "intent_fp": self.intent_classification_report.fp,
+            "slot_tp": self.slot_classification_report.tp,
+            "slot_fn": self.slot_classification_report.fn,
+            "slot_fp": self.slot_classification_report.fp,
         }
 
     def validation_epoch_end(self, outputs):
@@ -294,34 +290,34 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         Called at the end of validation to aggregate outputs.
         :param outputs: list of individual outputs of each validation step.
         """
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
 
         # calculate metrics and log classification report (separately for intents and slots)
-        intent_precision, intent_recall, intent_f1, intent_report = self.intent_classification_report.compute()
-        logging.info(f'Intent report: {intent_report}')
+        (intent_precision, intent_recall, intent_f1, intent_report,) = self.intent_classification_report.compute()
+        logging.info(f"Intent report: {intent_report}")
 
-        slot_precision, slot_recall, slot_f1, slot_report = self.slot_classification_report.compute()
-        logging.info(f'Slot report: {slot_report}')
+        (slot_precision, slot_recall, slot_f1, slot_report,) = self.slot_classification_report.compute()
+        logging.info(f"Slot report: {slot_report}")
 
-        self.log('val_loss', avg_loss)
-        self.log('intent_precision', intent_precision)
-        self.log('intent_recall', intent_recall)
-        self.log('intent_f1', intent_f1)
-        self.log('slot_precision', slot_precision)
-        self.log('slot_recall', slot_recall)
-        self.log('slot_f1', slot_f1)
+        self.log("val_loss", avg_loss)
+        self.log("intent_precision", intent_precision)
+        self.log("intent_recall", intent_recall)
+        self.log("intent_f1", intent_f1)
+        self.log("slot_precision", slot_precision)
+        self.log("slot_recall", slot_recall)
+        self.log("slot_f1", slot_f1)
 
         self.intent_classification_report.reset()
         self.slot_classification_report.reset()
 
         return {
-            'val_loss': avg_loss,
-            'intent_precision': intent_precision,
-            'intent_recall': intent_recall,
-            'intent_f1': intent_f1,
-            'slot_precision': slot_precision,
-            'slot_recall': slot_recall,
-            'slot_f1': slot_f1,
+            "val_loss": avg_loss,
+            "intent_precision": intent_precision,
+            "intent_recall": intent_recall,
+            "intent_f1": intent_f1,
+            "slot_precision": slot_precision,
+            "slot_recall": slot_recall,
+            "slot_f1": slot_f1,
         }
 
     def test_step(self, batch, batch_idx):
@@ -348,13 +344,13 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         self._test_dl = self._setup_dataloader_from_config(cfg=test_data_config)
 
     def _setup_dataloader_from_config(self, cfg: DictConfig):
-        input_file = f'{self.data_dir}/{cfg.prefix}.tsv'
-        slot_file = f'{self.data_dir}/{cfg.prefix}_slots.tsv'
+        input_file = f"{self.data_dir}/{cfg.prefix}.tsv"
+        slot_file = f"{self.data_dir}/{cfg.prefix}_slots.tsv"
 
         if not (os.path.exists(input_file) and os.path.exists(slot_file)):
             raise FileNotFoundError(
-                f'{input_file} or {slot_file} not found. Please refer to the documentation for the right format \
-                 of Intents and Slots files.'
+                f"{input_file} or {slot_file} not found. Please refer to the documentation for the right format \
+                 of Intents and Slots files."
             )
 
         dataset = MultiLabelIntentSlotClassificationDataset(
@@ -378,7 +374,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             collate_fn=dataset.collate_fn,
         )
 
-    def _setup_infer_dataloader(self, queries: List[str], test_ds) -> 'torch.utils.data.DataLoader':
+    def _setup_infer_dataloader(self, queries: List[str], test_ds) -> "torch.utils.data.DataLoader":
         """
         Setup function for a infer data loader.
         Args:
@@ -389,7 +385,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         """
 
         dataset = MultiLabelIntentSlotInferenceDataset(
-            tokenizer=self.tokenizer, queries=queries, max_seq_length=-1, do_lower_case=False
+            tokenizer=self.tokenizer, queries=queries, max_seq_length=-1, do_lower_case=False,
         )
 
         return torch.utils.data.DataLoader(
@@ -415,7 +411,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         predicted_slots = []
         mode = self.training
         try:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            device = "cuda" if torch.cuda.is_available() else "cpu"
 
             # Retrieve intent and slot vocabularies from configuration.
             intent_labels = self.cfg.data_desc.intent_labels
@@ -446,34 +442,28 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
                 # predict intents and slots for these examples
                 # intents
                 intent_preds = tensor2list(torch.sigmoid(intent_logits))
-                print("Intent Predictions:")
-                print(intent_preds)
                 # convert numerical outputs to Intent and Slot labels from the dictionaries
                 for intents in intent_preds:
                     intent_lst = []
                     for intent_num, probability in enumerate(intents):
-                        if probability > 0.5:
-                            print(probability)
-                            intent_lst.append(intent_labels[int(intent_num)])
+                        if probability > 0.7:
+                            intent_lst.append((intent_labels[int(intent_num)], round(probability, 2)))
                         # else:
                         #     # should not happen
                         #     intent_lst.append("Unknown Intent")
                     predicted_intents.append(intent_lst)
 
-                print("PREDICTED INTENTS:")
-                print(predicted_intents)
-
                 # slots
                 slot_preds = torch.argmax(slot_logits, axis=-1)
 
                 for slot_preds_query, mask_query in zip(slot_preds, subtokens_mask):
-                    query_slots = ''
+                    query_slots = ""
                     for slot, mask in zip(slot_preds_query, mask_query):
                         if mask == 1:
                             if slot < len(slot_labels):
-                                query_slots += slot_labels[int(slot)] + ' '
+                                query_slots += slot_labels[int(slot)] + " "
                             else:
-                                query_slots += 'Unknown_slot '
+                                query_slots += "Unknown_slot "
                     predicted_slots.append(query_slots.strip())
 
         finally:

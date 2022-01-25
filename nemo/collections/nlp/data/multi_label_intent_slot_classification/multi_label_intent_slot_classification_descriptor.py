@@ -18,7 +18,9 @@ from typing import List
 from nemo.collections.nlp.data.data_utils.data_preprocessing import (
     fill_class_weights,
     get_freq_weights,
+    get_freq_weights_bce_with_logits_loss,
     get_label_stats,
+    get_multi_label_stats,
     if_exist,
 )
 from nemo.utils import logging
@@ -59,11 +61,11 @@ class MultiLabelIntentSlotDataDesc:
     def __init__(
         self,
         data_dir: str,
-        modes: List[str] = ['train', 'test', 'dev'],
-        none_slot_label: str = 'O',
+        modes: List[str] = ["train", "test", "dev"],
+        none_slot_label: str = "O",
         pad_label: int = -1,
     ):
-        if not if_exist(data_dir, ['dict.intents.csv', 'dict.slots.csv']):
+        if not if_exist(data_dir, ["dict.intents.csv", "dict.slots.csv"]):
             raise FileNotFoundError(
                 "Make sure that your data follows the standard format "
                 "supported by JointIntentSlotDataset. Your data must "
@@ -71,8 +73,8 @@ class MultiLabelIntentSlotDataDesc:
             )
 
         self.data_dir = data_dir
-        self.intent_dict_file = self.data_dir + '/dict.intents.csv'
-        self.slot_dict_file = self.data_dir + '/dict.slots.csv'
+        self.intent_dict_file = self.data_dir + "/dict.intents.csv"
+        self.slot_dict_file = self.data_dir + "/dict.slots.csv"
 
         self.intents_label_ids = MultiLabelIntentSlotDataDesc.label2idx(self.intent_dict_file)
         self.num_intents = len(self.intents_label_ids)
@@ -81,16 +83,16 @@ class MultiLabelIntentSlotDataDesc:
 
         infold = self.data_dir
         for mode in modes:
-            if not if_exist(self.data_dir, [f'{mode}.tsv']):
-                logging.info(f' Stats calculation for {mode} mode' f' is skipped as {mode}.tsv was not found.')
+            if not if_exist(self.data_dir, [f"{mode}.tsv"]):
+                logging.info(f" Stats calculation for {mode} mode" f" is skipped as {mode}.tsv was not found.")
                 continue
-            logging.info(f' Stats calculating for {mode} mode...')
-            slot_file = f'{self.data_dir}/{mode}_slots.tsv'
-            with open(slot_file, 'r') as f:
+            logging.info(f" Stats calculating for {mode} mode...")
+            slot_file = f"{self.data_dir}/{mode}_slots.tsv"
+            with open(slot_file, "r") as f:
                 slot_lines = f.readlines()
 
-            input_file = f'{self.data_dir}/{mode}.tsv'
-            with open(input_file, 'r') as f:
+            input_file = f"{self.data_dir}/{mode}.tsv"
+            with open(input_file, "r") as f:
                 input_lines = f.readlines()[1:]  # Skipping headers at index 0
 
             if len(slot_lines) != len(input_lines):
@@ -110,26 +112,27 @@ class MultiLabelIntentSlotDataDesc:
                 parts = tuple(map(int, parts))
                 raw_intents.append(parts)
 
-            logging.info(f'Three most popular intents in {mode} mode:')
-            total_intents, intent_label_freq, max_id = get_label_stats(
-                raw_intents, infold + f'/{mode}_intent_stats.tsv'
+            logging.info(f"Three most popular intents in {mode} mode:")
+            total_intents, intent_label_freq, max_id = get_multi_label_stats(
+                raw_intents, infold + f"/{mode}_intent_stats.tsv"
             )
 
             merged_slots = itertools.chain.from_iterable(raw_slots)
-            logging.info(f'Three most popular slots in {mode} mode:')
-            slots_total, slots_label_freq, max_id = get_label_stats(merged_slots, infold + f'/{mode}_slot_stats.tsv')
+            logging.info(f"Three most popular slots in {mode} mode:")
+            slots_total, slots_label_freq, max_id = get_label_stats(merged_slots, infold + f"/{mode}_slot_stats.tsv")
 
-            logging.info(f'Total Number of Intents: {total_intents}')
-            logging.info(f'Intent Label Frequencies: {intent_label_freq}')
-            logging.info(f'Total Number of Slots: {slots_total}')
-            logging.info(f'Slots Label Frequencies: {slots_label_freq}')
+            logging.info(f"Total Number of Intents: {total_intents}")
+            logging.info(f"Intent Label Frequencies: {intent_label_freq}")
+            logging.info(f"Total Number of Slots: {slots_total}")
+            logging.info(f"Slots Label Frequencies: {slots_label_freq}")
 
-            if mode == 'train':
-                intent_weights_dict = get_freq_weights(intent_label_freq)
-                logging.info(f'Intent Weights: {intent_weights_dict}')
+            if mode == "train":
+                intent_weights_dict = get_freq_weights_bce_with_logits_loss(intent_label_freq)
+                logging.info(f"Intent Weights: {intent_weights_dict}")
                 slot_weights_dict = get_freq_weights(slots_label_freq)
-                logging.info(f'Slot Weights: {slot_weights_dict}')
+                logging.info(f"Slot Weights: {slot_weights_dict}")
 
+        # Note that these weights are not needed for intent class weights
         self.intent_weights = fill_class_weights(intent_weights_dict, self.num_intents - 1)
         self.slot_weights = fill_class_weights(slot_weights_dict, self.num_slots - 1)
 
@@ -137,28 +140,28 @@ class MultiLabelIntentSlotDataDesc:
             self.pad_label = pad_label
         else:
             if none_slot_label not in self.slots_label_ids:
-                raise ValueError(f'none_slot_label {none_slot_label} not ' f'found in {self.slot_dict_file}.')
+                raise ValueError(f"none_slot_label {none_slot_label} not " f"found in {self.slot_dict_file}.")
             self.pad_label = self.slots_label_ids[none_slot_label]
 
     @staticmethod
     def label2idx(file):
-        lines = open(file, 'r').readlines()
+        lines = open(file, "r").readlines()
         lines = [line.strip() for line in lines if line.strip()]
         labels = {lines[i]: i for i in range(len(lines))}
         return labels
 
     @staticmethod
     def intent_slot_dicts(data_dir):
-        '''
+        """
         Return Intent and slot dictionaries
-        '''
-        intent_dict_file = data_dir + '/dict.intents.csv'
-        slot_dict_file = data_dir + '/dict.slots.csv'
+        """
+        intent_dict_file = data_dir + "/dict.intents.csv"
+        slot_dict_file = data_dir + "/dict.slots.csv"
 
-        intents_labels = open(intent_dict_file, 'r').readlines()
+        intents_labels = open(intent_dict_file, "r").readlines()
         intents_labels = [line.strip() for line in intents_labels if line.strip()]
 
-        slots_labels = open(slot_dict_file, 'r').readlines()
+        slots_labels = open(slot_dict_file, "r").readlines()
         slots_labels = [line.strip() for line in slots_labels if line.strip()]
 
         return intents_labels, slots_labels
