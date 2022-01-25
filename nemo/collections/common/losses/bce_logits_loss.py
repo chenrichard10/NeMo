@@ -18,10 +18,10 @@ from torch import nn
 from nemo.core.classes import Serialization, Typing, typecheck
 from nemo.core.neural_types import LabelsType, LogitsType, LogprobsType, LossType, MaskType, NeuralType
 
-__all__ = ['BCELoss']
+__all__ = ["BCEWithLogitsLoss"]
 
 
-class BCELoss(nn.BCEWithLogitsLoss, Serialization, Typing):
+class BCEWithLogitsLoss(nn.BCEWithLogitsLoss, Serialization, Typing):
     """
     BCELoss
     """
@@ -31,9 +31,9 @@ class BCELoss(nn.BCEWithLogitsLoss, Serialization, Typing):
         """Returns definitions of module input ports.
         """
         return {
-            "logits": NeuralType(['B'] + ['ANY'] * (self._logits_dim - 1), LogitsType()),
-            "labels": NeuralType(['B'] + ['ANY'] * (self._logits_dim - 2), LabelsType()),
-            "loss_mask": NeuralType(['B'] + ['ANY'] * (self._logits_dim - 2), MaskType(), optional=True),
+            "logits": NeuralType(["B"] + ["ANY"] * (self._logits_dim - 1), LogitsType()),
+            "labels": NeuralType(["B"] + ["ANY"] * (self._logits_dim - 2), LabelsType()),
+            "loss_mask": NeuralType(["B"] + ["ANY"] * (self._logits_dim - 2), MaskType(), optional=True),
         }
 
     @property
@@ -42,17 +42,19 @@ class BCELoss(nn.BCEWithLogitsLoss, Serialization, Typing):
         """
         return {"loss": NeuralType(elements_type=LossType())}
 
-    def __init__(self, logits_ndim=2, weight=None, reduction='mean', ignore_index=-100):
+    def __init__(
+        self, logits_ndim=2, weight=None, reduction="mean", ignore_index=-100, pos_weight=None,
+    ):
         """
         Args:
             logits_ndim (int): number of dimensions (or rank) of the logits tensor
             weight (list): list of rescaling weight given to each class
             reduction (str): type of the reduction over the batch
         """
-        if weight is not None and not torch.is_tensor(weight):
-            weight = torch.FloatTensor(weight)
+        if pos_weight is not None and not torch.is_tensor(pos_weight):
+            pos_weight = torch.FloatTensor(pos_weight)
         # Think about ignore index
-        super().__init__(weight=weight, reduction=reduction)
+        super().__init__(pos_weight=pos_weight, reduction=reduction)
         self._logits_dim = logits_ndim
 
     # @typecheck()
