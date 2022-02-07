@@ -19,8 +19,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from apex.transformer import parallel_state, tensor_parallel
-from apex.transformer.enums import AttnMaskType, LayerType
 
 from nemo.collections.nlp.modules.common.megatron.module import MegatronModule
 from nemo.collections.nlp.modules.common.megatron.transformer import ParallelTransformer
@@ -29,6 +27,14 @@ from nemo.collections.nlp.modules.common.megatron.utils import (
     init_method_normal,
     scaled_init_method_normal,
 )
+
+try:
+    from apex.transformer import parallel_state, tensor_parallel
+    from apex.transformer.enums import AttnMaskType, LayerType
+
+    HAVE_APEX = True
+except (ImportError, ModuleNotFoundError):
+    HAVE_APEX = False
 
 
 def parallel_lm_logits(input_, word_embeddings_weight, parallel_output, bias=None):
@@ -74,6 +80,7 @@ def get_language_model(
     activations_checkpoint_num_layers=1,
     layernorm_epsilon=1e-5,
     bias_gelu_fusion=True,
+    persist_layer_norm=False,
     openai_gelu=False,
     onnx_safe=False,
     use_soft_prompts=False,
@@ -121,6 +128,7 @@ def get_language_model(
         activations_checkpoint_num_layers=activations_checkpoint_num_layers,
         layernorm_epsilon=layernorm_epsilon,
         bias_gelu_fusion=bias_gelu_fusion,
+        persist_layer_norm=persist_layer_norm,
         openai_gelu=openai_gelu,
         onnx_safe=onnx_safe,
         use_soft_prompts=use_soft_prompts,
@@ -538,6 +546,7 @@ class TransformerLanguageModel(MegatronModule):
         activations_checkpoint_num_layers=1,
         layernorm_epsilon=1e-5,
         bias_gelu_fusion=True,
+        persist_layer_norm=False,
         openai_gelu=False,
         onnx_safe=False,
         use_soft_prompts=False,
@@ -612,6 +621,7 @@ class TransformerLanguageModel(MegatronModule):
             hidden_dropout=hidden_dropout,
             use_cpu_initialization=use_cpu_initialization,
             bias_gelu_fusion=bias_gelu_fusion,
+            persist_layer_norm=persist_layer_norm,
             openai_gelu=openai_gelu,
             onnx_safe=onnx_safe,
         )
@@ -643,6 +653,7 @@ class TransformerLanguageModel(MegatronModule):
                 hidden_dropout=hidden_dropout,
                 use_cpu_initialization=use_cpu_initialization,
                 bias_gelu_fusion=bias_gelu_fusion,
+                persist_layer_norm=persist_layer_norm,
                 openai_gelu=openai_gelu,
                 onnx_safe=onnx_safe,
             )
@@ -674,9 +685,10 @@ class TransformerLanguageModel(MegatronModule):
         pooling_sequence_index=0,
         enc_hidden_states=None,
         output_enc_hidden_only=False,
+        encoder_input=None,
     ):
         # Embeddings.
-        if self.pre_process:
+        if self.pre_process and encoder_input is None:
             embedding_output = self.embedding(enc_input_ids, enc_position_ids, tokentype_ids=tokentype_ids)
 
             # Soft prompts
@@ -689,7 +701,7 @@ class TransformerLanguageModel(MegatronModule):
             else:
                 encoder_input = embedding_output
         else:
-            encoder_input = None
+            pass
 
         # encoder.
         if enc_hidden_states is None:
