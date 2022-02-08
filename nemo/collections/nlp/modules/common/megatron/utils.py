@@ -17,13 +17,7 @@
 import math
 
 import torch
-
-try:
-    from apex.transformer import parallel_state
-
-    HAVE_APEX = True
-except (ImportError, ModuleNotFoundError):
-    HAVE_APEX = False
+from apex.transformer import parallel_state
 
 
 def init_method_normal(sigma):
@@ -108,7 +102,7 @@ def get_ltor_masks_and_position_ids(data, eod_token, reset_position_ids, reset_a
 
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)
-    position_ids = position_ids.unsqueeze(0).repeat(micro_batch_size, 1)
+    position_ids = position_ids.unsqueeze(0).expand_as(data)
     # We need to clone as the ids will be modifed based on batch index.
     if reset_position_ids:
         position_ids = position_ids.clone()

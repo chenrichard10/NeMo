@@ -30,7 +30,6 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types.elements import *
 from nemo.core.neural_types.neural_type import NeuralType
 from nemo.utils import logging
-from nemo.utils.decorators import deprecated
 
 
 @dataclass
@@ -43,7 +42,6 @@ class FastSpeech2Config:
     validation_ds: Optional[Dict[Any, Any]] = None
 
 
-@deprecated(version="1.8", explanation="FastSpeech2Model will be removed. Please, use FastPitchModel instead.")
 class FastSpeech2Model(SpectrogramGenerator):
     """FastSpeech 2 model used to convert from text (phonemes) to mel-spectrograms."""
 
@@ -84,7 +82,7 @@ class FastSpeech2Model(SpectrogramGenerator):
                 "ERROR: You must specify a mappings.json file in the config file under model.mappings_filepath."
             )
         mappings_filepath = self.register_artifact('mappings_filepath', mappings_filepath)
-        with open(mappings_filepath, 'r', encoding='utf-8') as f:
+        with open(mappings_filepath, 'r') as f:
             mappings = json.load(f)
             self.word2phones = mappings['word2phones']
             self.phone2idx = mappings['phone2idx']
@@ -100,7 +98,7 @@ class FastSpeech2Model(SpectrogramGenerator):
         },
         output_types={
             "mel_spec": NeuralType(('B', 'T', 'C'), MelSpectrogramType()),
-            "log_dur_preds": NeuralType(('B', 'T'), TokenLogDurationType(), optional=True),
+            "log_dur_preds": NeuralType(('B', 'T'), TokenDurationType(), optional=True),
             "pitch_preds": NeuralType(('B', 'T'), RegressionValuesType(), optional=True),
             "energy_preds": NeuralType(('B', 'T'), RegressionValuesType(), optional=True),
             "encoded_text_mask": NeuralType(('B', 'T', 'D'), MaskType()),

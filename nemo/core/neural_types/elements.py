@@ -35,7 +35,6 @@ __all__ = [
     'CategoricalValuesType',
     'PredictionsType',
     'LogprobsType',
-    'ProbsType',
     'LengthsType',
     'EmbeddedTextType',
     'EncodedRepresentation',

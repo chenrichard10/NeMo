@@ -1,12 +1,9 @@
+# @package _group_
 dataset:
-  _target_: "nemo.collections.tts.torch.data.VocoderDataset"
+  _target_: "nemo.collections.tts.data.datalayers.MelAudioDataset"
   manifest_filepath: ${train_dataset}
-  sample_rate: ${sample_rate}
-  n_segments: ${train_n_segments}
-  max_duration: ${train_max_duration}
-  min_duration: ${train_min_duration}
-  load_precomputed_mel: true
-  hop_length: ${n_window_stride}
+  min_duration: 0.75
+  n_segments: 8192
 dataloader_params:
   drop_last: false
   shuffle: true

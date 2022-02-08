@@ -15,10 +15,13 @@
 """BERT model."""
 
 import torch
+from apex.transformer import parallel_state, tensor_parallel
+from apex.transformer.enums import AttnMaskType
+from apex.transformer.tensor_parallel.layers import set_tensor_model_parallel_attributes
 
 from nemo.collections.nlp.modules.common.megatron.language_model import get_language_model, parallel_lm_logits
 from nemo.collections.nlp.modules.common.megatron.module import MegatronModule
-from nemo.collections.nlp.modules.common.megatron.transformer import get_layer_norm
+from nemo.collections.nlp.modules.common.megatron.transformer import LayerNorm
 from nemo.collections.nlp.modules.common.megatron.utils import (
     erf_gelu,
     get_linear_layer,
@@ -26,16 +29,6 @@ from nemo.collections.nlp.modules.common.megatron.utils import (
     openai_gelu,
     scaled_init_method_normal,
 )
-from nemo.utils import logging
-
-try:
-    from apex.transformer import parallel_state, tensor_parallel
-    from apex.transformer.enums import AttnMaskType
-    from apex.transformer.tensor_parallel.layers import set_tensor_model_parallel_attributes
-
-    HAVE_APEX = True
-except (ImportError, ModuleNotFoundError):
-    HAVE_APEX = False
 
 
 def bert_extended_attention_mask(attention_mask):
@@ -86,7 +79,7 @@ class BertLMHead(MegatronModule):
         self.parallel_output = parallel_output
 
         self.dense = get_linear_layer(hidden_size, hidden_size, init_method)
-        self.layernorm = get_layer_norm(hidden_size, eps=layernorm_epsilon)
+        self.layernorm = LayerNorm(hidden_size, eps=layernorm_epsilon)
         self.gelu = torch.nn.functional.gelu
         if use_openai_gelu:
             self.gelu = openai_gelu

@@ -14,4 +14,3 @@ fasttext
 opencc
 pangu
 jieba
-ftfy

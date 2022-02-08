@@ -35,14 +35,7 @@ try:
 except ImportError:
     PYTORCH_QUANTIZATION_AVAILABLE = False
 
-jasper_activations = {
-    "hardtanh": nn.Hardtanh,
-    "relu": nn.ReLU,
-    "selu": nn.SELU,
-    "swish": Swish,
-    "silu": nn.SiLU,
-    "gelu": nn.GELU,
-}
+jasper_activations = {"hardtanh": nn.Hardtanh, "relu": nn.ReLU, "selu": nn.SELU, "swish": Swish, "silu": nn.SiLU}
 
 
 def tds_uniform_(tensor, mode='fan_in'):
@@ -187,14 +180,12 @@ def _se_pool_step_script_infer(x: torch.Tensor, context_window: int, mask: torch
     if timesteps < context_window:
         y = torch.sum(x, dim=-1, keepdim=True) / mask.sum(dim=-1, keepdim=True).to(x.dtype)
     else:
-        # << During inference prefer to use entire context >>
-        # x = x[:, :, :context_window]  # [B, C, context_window]
-        # mask = mask[:, :, :context_window]  # [B, 1, context_window]
-        #
-        # mask = mask.sum(dim=-1, keepdim=True).to(x.dtype)  # [B, C, 1]
-        # y = x.sum(dim=-1, keepdim=True)  # [B, 1, 1]
-        # y = y / (mask + 1e-8)  # [B, C, 1]
-        y = torch.sum(x, dim=-1, keepdim=True) / mask.sum(dim=-1, keepdim=True).to(x.dtype)
+        x = x[:, :, :context_window]  # [B, C, context_window]
+        mask = mask[:, :, :context_window]  # [B, 1, context_window]
+
+        mask = mask.sum(dim=-1, keepdim=True).to(x.dtype)  # [B, C, 1]
+        y = x.sum(dim=-1, keepdim=True)  # [B, 1, 1]
+        y = y / (mask + 1e-8)  # [B, C, 1]
 
     return y
 

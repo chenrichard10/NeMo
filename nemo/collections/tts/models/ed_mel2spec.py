@@ -30,7 +30,6 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types.elements import MelSpectrogramType, SpectrogramType
 from nemo.core.neural_types.neural_type import NeuralType
 from nemo.utils import logging
-from nemo.utils.decorators import deprecated
 
 
 @dataclass
@@ -48,7 +47,6 @@ def gen_filter(k):
     return K
 
 
-@deprecated(version="1.8", explanation="EDMel2SpecModel will be removed.")
 class EDMel2SpecModel(MelToSpec):
     """
         A model that convert mel spectrograms to linear spectrograms, using an encoder- decoder like model

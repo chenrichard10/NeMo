@@ -109,13 +109,12 @@ class CardinalFst(GraphFst):
                 leading_zeros + pynutil.insert(" ") + pynini.compose(pynini.closure(NEMO_DIGIT), self.graph)
             )
 
-            # add small weight to non-default graphs to make sure the deterministic option is listed first
             final_graph = (
                 self.graph
                 | serial_graph
                 | self.range_graph
-                | pynutil.add_weight(self.single_digits_graph, 0.001)
-                | pynutil.add_weight(get_hundreds_graph(), 0.001)
+                | self.single_digits_graph
+                | get_hundreds_graph()
                 | pynutil.add_weight(single_digits_graph_with_commas, 0.001)
                 | cardinal_with_leading_zeros
             )

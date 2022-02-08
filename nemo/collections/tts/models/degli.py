@@ -54,7 +54,6 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types.elements import IntType, LengthsType, SpectrogramType
 from nemo.core.neural_types.neural_type import NeuralType
 from nemo.utils import logging
-from nemo.utils.decorators import deprecated
 
 
 @dataclass
@@ -98,7 +97,6 @@ def reconstruct_wave(*args: ndarray, kwargs_istft, n_sample=-1) -> ndarray:
     return wave
 
 
-@deprecated(version="1.8", explanation="DegliModel will be removed.")
 class DegliModel(LinVocoder):
     """Deep Griffin Lim model used to convert between spectrograms and audio"""
 

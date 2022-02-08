@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional, Union
+import re
+from pathlib import Path
+from typing import List
 
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
@@ -36,20 +38,9 @@ class ByteLevelProcessor:
 
 
 class ByteLevelTokenizer(TokenizerSpec):
-    def __init__(self, special_tokens: Optional[Union[Dict[str, str], List[str]]] = None):
+    def __init__(self):
         self.vocab_size = 259
-        self.special_start = 256
-        self.special_token_to_id = {
-            self.pad_id: self.pad_id,
-            self.bos_id: self.bos_id,
-            self.eos_id: self.eos_id,
-        }
-        special_tokens = {} if special_tokens is None else special_tokens
-        for tok in special_tokens:
-            self.special_start -= 1
-            self.special_token_to_id[tok] = self.special_start
-
-        self.id_to_special_token = {v: k for k, v in self.special_token_to_id.items()}
+        self.special_tokens = [self.bos_id, self.eos_id, self.pad_id]
 
     # no distinction between tokens and ids.
     def text_to_tokens(self, text):
@@ -63,36 +54,14 @@ class ByteLevelTokenizer(TokenizerSpec):
 
     def ids_to_text(self, ids):
         # remove special tokens.
-        ids = [x for x in ids if x < self.special_start]
+        ids = [x for x in ids if x < 256]
         return bytes(ids).decode('utf-8', errors='ignore').rstrip()
 
     def tokens_to_ids(self, tokens):
-        if isinstance(tokens, str):
-            tokens = [tokens]
-        ids = []
-        for token in tokens:
-            ids.append(self.token_to_id(token))
-        return ids
-
-    def ids_to_tokens(self, ids):
-        if isinstance(ids, int):
-            ids = [ids]
-        tokens = []
-        for id in ids:
-            tokens.append(self.id_to_token(id))
         return tokens
 
-    def token_to_id(self, token):
-        if token in self.special_token_to_id:
-            return self.special_token_to_id[token]
-        else:
-            return token
-
-    def id_to_token(self, id):
-        if id < self.special_start:
-            return id
-        else:
-            return self.id_to_special_token[id]
+    def ids_to_tokens(self, ids):
+        return ids
 
     @property
     def pad_id(self):

@@ -20,7 +20,6 @@ from pytorch_lightning.trainer.trainer import Trainer
 
 from nemo.collections.nlp.modules.common.megatron.megatron_init import initialize_model_parallel_for_nemo
 from nemo.utils import AppState, logging
-from nemo.utils.get_rank import is_global_rank_zero
 
 
 class MegatronDataset(torch.utils.data.Dataset):
@@ -51,15 +50,9 @@ class MegatronDataset(torch.utils.data.Dataset):
         try:
             from nemo.collections.nlp.data.language_modeling.megatron.dataset_utils import compile_helper
 
-            if is_global_rank_zero():
-                compile_helper()
-
-            if torch.distributed.is_available() and torch.distributed.is_initialized():
-                torch.distributed.barrier()
-
-            from nemo.collections.nlp.data.language_modeling.megatron import helpers
-
+            compile_helper()
             logging.info('Megatron dataset helper compiled successfully.')
+            from nemo.collections.nlp.data.language_modeling.megatron import helpers
         except ImportError:
             raise ImportError(
                 f'Could not compile megatron dataset C++ helper functions and therefore cannot import helpers python file.'

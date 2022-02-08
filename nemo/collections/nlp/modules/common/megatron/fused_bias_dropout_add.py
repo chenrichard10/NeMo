@@ -15,13 +15,7 @@
 
 
 import torch
-
-try:
-    from apex._autocast_utils import _cast_if_autocast_enabled
-
-    HAVE_APEX = True
-except (ImportError, ModuleNotFoundError):
-    HAVE_APEX = False
+from apex._autocast_utils import _cast_if_autocast_enabled
 
 
 def bias_dropout_add(x, bias, residual, prob, training):

@@ -16,14 +16,7 @@ import torch
 
 from nemo.collections.tts.helpers.helpers import get_mask_from_lengths
 from nemo.core.classes import Loss, typecheck
-from nemo.core.neural_types.elements import (
-    LengthsType,
-    LossType,
-    MaskType,
-    MelSpectrogramType,
-    TokenDurationType,
-    TokenLogDurationType,
-)
+from nemo.core.neural_types.elements import LengthsType, LossType, MaskType, MelSpectrogramType, TokenDurationType
 from nemo.core.neural_types.neural_type import NeuralType
 
 
@@ -33,7 +26,7 @@ class DurationLoss(Loss):
     @property
     def input_types(self):
         return {
-            "log_duration_pred": NeuralType(('B', 'T'), TokenLogDurationType()),
+            "log_duration_pred": NeuralType(('B', 'T'), TokenDurationType()),
             "duration_target": NeuralType(('B', 'T'), TokenDurationType()),
             "mask": NeuralType(('B', 'T', 'D'), MaskType()),
         }

@@ -37,14 +37,14 @@ class NeuralModule(Module, Typing, Serialization, FileIO):
                 num += p.numel()
         return num
 
-    def input_example(self, max_batch=None, max_dim=None):
+    def input_example(self):
         """
         Override this method if random inputs won't work
         Returns:
             A tuple sample of valid input data.
         """
 
-        return None
+        return
 
     def freeze(self) -> None:
         r"""
