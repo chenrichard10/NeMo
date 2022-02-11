@@ -108,9 +108,10 @@ class MultiLabelIntentSlotDataDesc:
             for slot_line, input_line in dataset:
                 slot_list = [int(slot) for slot in slot_line.strip().split()]
                 raw_slots.append(slot_list)
-                parts = input_line.strip().split("\t")[1:]
-                parts = tuple(map(int, parts))
-                raw_intents.append(parts)
+                parts = input_line.strip().split("\t")[1:][0]
+                parts = list(map(int, parts.split(",")))
+                parts = [1 if label in parts else 0 for label in range(self.num_intents)]
+                raw_intents.append(tuple(parts))
 
             logging.info(f"Three most popular intents in {mode} mode:")
             total_intents, intent_label_freq, max_id = get_multi_label_stats(
