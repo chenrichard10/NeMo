@@ -15,10 +15,12 @@
 import os
 from typing import Dict, List, Optional
 
+import numpy as np
 import onnx
 import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
+from sklearn.metrics import classification_report, f1_score, precision_score, recall_score
 from torch.utils.data import DataLoader
 
 from nemo.collections.common.losses import AggregatorLoss, BCEWithLogitsLoss, CrossEntropyLoss
@@ -52,6 +54,10 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         """ Initializes BERT Joint Intent and Slot model.
         """
         self.max_seq_length = cfg.language_model.max_seq_length
+
+        # Optimal Threshold
+        self.threshold = 0.5
+        self.max_f1 = 0
 
         # Setup tokenizer.
         self.setup_tokenizer(cfg.tokenizer)
@@ -265,10 +271,9 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         slot_loss = self.slot_loss(logits=slot_logits, labels=slot_labels, loss_mask=loss_mask)
         val_loss = self.total_loss(loss_1=intent_loss, loss_2=slot_loss)
 
-        # calculate accuracy metrics for intents and slot reporting
-        # intents
-        preds = torch.round(torch.sigmoid(intent_logits)).int()
-        self.intent_classification_report.update(preds, intent_labels)
+        intent_probabilities = torch.round(torch.sigmoid(intent_logits))
+
+        self.intent_classification_report.update(intent_probabilities, intent_labels)
         # slots
         subtokens_mask = subtokens_mask > 0.5
         preds = torch.argmax(slot_logits, axis=-1)[subtokens_mask]
@@ -346,6 +351,11 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
     def _setup_dataloader_from_config(self, cfg: DictConfig):
         input_file = f"{self.data_dir}/{cfg.prefix}.tsv"
         slot_file = f"{self.data_dir}/{cfg.prefix}_slots.tsv"
+        intent_dict_file = self.data_dir + "/dict.intents.csv"
+
+        lines = open(intent_dict_file, "r").readlines()
+        lines = [line.strip() for line in lines if line.strip()]
+        num_intents = len(lines)
 
         if not (os.path.exists(input_file) and os.path.exists(slot_file)):
             raise FileNotFoundError(
@@ -356,6 +366,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         dataset = MultiLabelIntentSlotClassificationDataset(
             input_file=input_file,
             slot_file=slot_file,
+            num_intents=num_intents,
             tokenizer=self.tokenizer,
             max_seq_length=self.max_seq_length,
             num_samples=cfg.num_samples,
@@ -398,17 +409,122 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             drop_last=test_ds.drop_last,
         )
 
-    def predict_from_examples(self, queries: List[str], test_ds) -> List[List[str]]:
+    def prediction_probabilities(self, queries: List[str], test_ds) -> List[List[int]]:
         """
-        Get prediction for the queries (intent and slots)
+        Get prediction probabilities for the queries (intent and slots)
         Args:
             queries: text sequences
             test_ds: Dataset configuration section.
         Returns:
             predicted_intents, predicted_slots: model intent and slot predictions
         """
+
+        probabilities = []
+
+        mode = self.training
+        try:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            # Retrieve intent and slot vocabularies from configuration.
+            intent_labels = self.cfg.data_desc.intent_labels
+            slot_labels = self.cfg.data_desc.slot_labels
+
+            # Initialize tokenizer.
+            # if not hasattr(self, "tokenizer"):
+            #    self._setup_tokenizer(self.cfg.tokenizer)
+            # Initialize modules.
+            # self._reconfigure_classifier()
+
+            # Switch model to evaluation mode
+            self.eval()
+            self.to(device)
+
+            # Dataset.
+            infer_datalayer = self._setup_infer_dataloader(queries, test_ds)
+
+            for batch in infer_datalayer:
+                input_ids, input_type_ids, input_mask, loss_mask, subtokens_mask = batch
+
+                intent_logits, slot_logits = self.forward(
+                    input_ids=input_ids.to(device),
+                    token_type_ids=input_type_ids.to(device),
+                    attention_mask=input_mask.to(device),
+                )
+
+                # predict intents and slots for these examples
+                # intents
+                probabilities.append(torch.sigmoid(intent_logits))
+
+            probabilities = torch.cat(probabilities)
+
+        finally:
+            # set mode back to its original value
+            self.train(mode=mode)
+
+        return probabilities
+
+    def optimize_threshold(self, test_ds):
+        input_file = f"{self.data_dir}/dev.tsv"
+
+        with open(input_file, "r") as f:
+            input_lines = f.readlines()[1:]  # Skipping headers at index 0
+
+        dataset = list(input_lines)
+
+        metrics_labels, sentences = [], []
+
+        for input_line in dataset:
+            sentence = input_line.strip().split("\t")[0]
+            sentences.append(sentence)
+            parts = input_line.strip().split("\t")[1:][0]
+            parts = list(map(int, parts.split(",")))
+            parts = [1 if label in parts else 0 for label in range(len(self.cfg.data_desc.intent_labels))]
+            metrics_labels.append(parts)
+
+        # Retrieve class probabilities for each sentence
+        intent_probabilities = self.prediction_probabilities(sentences, test_ds)
+
+        metrics_dict = {}
+        # Find optimal logits rounding threshold for intents
+        for i in np.arange(0.5, 0.96, 0.01):
+            predictions = tensor2list((intent_probabilities >= i).int())
+            precision = precision_score(metrics_labels, predictions, average='micro')
+            recall = recall_score(metrics_labels, predictions, average='micro')
+            f1 = f1_score(metrics_labels, predictions, average='micro')
+            metrics_dict[i] = [precision, recall, f1]
+
+        max_precision = max(metrics_dict, key=lambda x: metrics_dict[x][0])
+        max_recall = max(metrics_dict, key=lambda x: metrics_dict[x][1])
+        max_f1_score = max(metrics_dict, key=lambda x: metrics_dict[x][2])
+
+        logging.info(
+            f'Maximum Threshold for F1-Score: {max_f1_score}, [Precision, Recall, F1-Score]: {metrics_dict[max_f1_score]}'
+        )
+        logging.info(
+            f'Maximum Threshold for Precision: {max_precision}, [Precision, Recall, F1-Score]: {metrics_dict[max_precision]}'
+        )
+        logging.info(
+            f'Maximum Threshold for Recall: {max_recall}, [Precision, Recall, F1-Score]: {metrics_dict[max_recall]}'
+        )
+
+        if metrics_dict[max_f1_score][2] > self.max_f1:
+            self.max_f1 = metrics_dict[max_f1_score][2]
+            self.threshold = max_f1_scored
+
+    def predict_from_examples(self, queries: List[str], test_ds, threshold) -> List[List[str]]:
+        """
+        Get prediction for the queries (intent and slots)
+        Args:
+            queries: text sequences
+            test_ds: Dataset configuration section.
+            threshold: Threshold for rounding prediction logits
+        Returns:
+            predicted_intents, predicted_slots: model intent and slot predictions
+        """
         predicted_intents = []
         predicted_slots = []
+        predicted_vector = []
+
         mode = self.training
         try:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -445,32 +561,40 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
                 # convert numerical outputs to Intent and Slot labels from the dictionaries
                 for intents in intent_preds:
                     intent_lst = []
+                    temp_list = []
                     for intent_num, probability in enumerate(intents):
-                        if probability > 0.7:
+                        if probability >= threshold:
                             intent_lst.append((intent_labels[int(intent_num)], round(probability, 2)))
-                        # else:
-                        #     # should not happen
-                        #     intent_lst.append("Unknown Intent")
+                            temp_list.append(1)
+                        else:
+                            temp_list.append(0)
+
+                    predicted_vector.append(temp_list)
                     predicted_intents.append(intent_lst)
 
                 # slots
                 slot_preds = torch.argmax(slot_logits, axis=-1)
+                temp_slots_preds = []
 
                 for slot_preds_query, mask_query in zip(slot_preds, subtokens_mask):
+                    temp_slots = ""
                     query_slots = ""
                     for slot, mask in zip(slot_preds_query, mask_query):
                         if mask == 1:
                             if slot < len(slot_labels):
                                 query_slots += slot_labels[int(slot)] + " "
+                                temp_slots += f"{slot} "
                             else:
                                 query_slots += "Unknown_slot "
+                                temp_slots += "0 "
                     predicted_slots.append(query_slots.strip())
+                    temp_slots_preds.append(temp_slots)
 
         finally:
             # set mode back to its original value
             self.train(mode=mode)
 
-        return predicted_intents, predicted_slots
+        return predicted_intents, predicted_slots, predicted_vector
 
     @classmethod
     def list_available_models(cls) -> Optional[PretrainedModelInfo]:

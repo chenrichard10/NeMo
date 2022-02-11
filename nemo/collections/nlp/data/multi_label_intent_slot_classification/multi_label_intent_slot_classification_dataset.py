@@ -176,6 +176,7 @@ class MultiLabelIntentSlotClassificationDataset(Dataset):
         self,
         input_file: str,
         slot_file: str,
+        num_intents: int,
         max_seq_length: int,
         tokenizer: TokenizerSpec,
         num_samples: int = -1,
@@ -203,9 +204,10 @@ class MultiLabelIntentSlotClassificationDataset(Dataset):
         raw_slots, queries, raw_intents = [], [], []
         for slot_line, input_line in dataset:
             raw_slots.append([int(slot) for slot in slot_line.strip().split()])
-            parts = input_line.strip().split("\t")[1:]
-            parts = tuple(map(int, parts))
-            raw_intents.append(parts)
+            parts = input_line.strip().split("\t")[1:][0]
+            parts = list(map(int, parts.split(",")))
+            parts = [1 if label in parts else 0 for label in range(num_intents)]
+            raw_intents.append(tuple(parts))
             tokens = input_line.strip().split("\t")[0].split()
             query = ' '.join(tokens)
             if do_lower_case:
@@ -221,6 +223,7 @@ class MultiLabelIntentSlotClassificationDataset(Dataset):
             ignore_extra_tokens=ignore_extra_tokens,
             ignore_start_end=ignore_start_end,
         )
+
         self.all_input_ids = features[0]
         self.all_segment_ids = features[1]
         self.all_input_mask = features[2]
