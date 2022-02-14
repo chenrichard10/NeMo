@@ -512,7 +512,12 @@ def get_freq_weights_bce_with_logits_loss(label_freq):
     for label_id, class_values in label_freq.items():
         positive_class = class_values[1]
         negative_class = class_values[0]
-        weights[label_id] = float(negative_class) / float(positive_class)
+
+        if positive_class == 0:
+            weights[label_id] = 0
+
+        else:
+            weights[label_id] = float(negative_class) / float(positive_class)
 
     return weights
 
