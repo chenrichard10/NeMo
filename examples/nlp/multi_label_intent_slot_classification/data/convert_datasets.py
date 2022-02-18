@@ -1,3 +1,18 @@
+# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import argparse
 import os
 import shutil
@@ -8,8 +23,12 @@ import pandas as pd
 
 def convert_atis_multi_label(path, source_dir, target_dir, mode):
     """
-    converts atis data to multi-label data
-    path - path to tsv file
+    Converts single label atis nemo data to multi-label data. Previous 
+    labels in Nemo mapped multi-labels to a single index rather than two separate indicies.
+
+    path: path to csv file to convet
+    source_dir: directory that stored original nemo files
+    target_dir: directory to store multi-label nemo files
     """
     data = pd.read_csv(path, sep='\t')
     # Get the original intent dictionary
@@ -76,12 +95,8 @@ if __name__ == "__main__":
     target_dir = args.target_data_dir
 
     convert_intent_dictionary(f'{source_dir}', f'{target_dir}')
-    convert_atis_multi_label(
-        f'{source_dir}/train.tsv', f'{source_dir}', f'{target_dir}', 'train'
-    )
-    convert_atis_multi_label(
-        f'{source_dir}/test.tsv', f'{source_dir}', f'{target_dir}', 'dev'
-    )
+    convert_atis_multi_label(f'{source_dir}/train.tsv', f'{source_dir}', f'{target_dir}', 'train')
+    convert_atis_multi_label(f'{source_dir}/test.tsv', f'{source_dir}', f'{target_dir}', 'dev')
     shutil.copyfile(f'{source_dir}/dict.slots.csv', f'{target_dir}/dict.slots.csv')
     shutil.copyfile(f'{source_dir}/train_slots.tsv', f'{target_dir}/train_slots.tsv')
     shutil.copyfile(f'{source_dir}/test_slots.tsv', f'{target_dir}/dev_slots.tsv')

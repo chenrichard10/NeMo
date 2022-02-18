@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
     MultiLabelIntentSlotDataDesc,
     MultiLabelIntentSlotInferenceDataset,
 )
-from nemo.collections.nlp.metrics.classification_report import ClassificationReport
-from nemo.collections.nlp.metrics.multi_label_classification_report import MultiLabelClassificationReport
+from nemo.collections.nlp.metrics.classification_report import ClassificationReport, MultiLabelClassificationReport
+from nemo.collections.nlp.models.intent_slot_classification import IntentSlotClassificationModel
 from nemo.collections.nlp.models.nlp_model import NLPModel
 from nemo.collections.nlp.modules.common import SequenceTokenClassifier
 from nemo.collections.nlp.modules.common.lm_utils import get_lm_model
@@ -41,15 +41,7 @@ from nemo.core.neural_types import NeuralType
 from nemo.utils import logging
 
 
-class MultiLabelIntentSlotClassificationModel(NLPModel):
-    @property
-    def input_types(self) -> Optional[Dict[str, NeuralType]]:
-        return self.bert_model.input_types
-
-    @property
-    def output_types(self) -> Optional[Dict[str, NeuralType]]:
-        return self.classifier.output_types
-
+class MultiLabelIntentSlotClassificationModel(IntentSlotClassificationModel):
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
         """ Initializes BERT Joint Intent and Slot model.
         """
@@ -93,26 +85,6 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         # Initialize Classifier.
         self._reconfigure_classifier()
 
-    def _set_defaults_data_desc(self, cfg):
-        """
-        Method makes sure that cfg.data_desc params are set.
-        If not, set's them to "dummy" defaults.
-        """
-        if not hasattr(cfg, "data_desc"):
-            OmegaConf.set_struct(cfg, False)
-            cfg.data_desc = {}
-            # Intents.
-            cfg.data_desc.intent_labels = " "
-            cfg.data_desc.intent_label_ids = {" ": 0}
-            cfg.data_desc.intent_weights = [1]
-            # Slots.
-            cfg.data_desc.slot_labels = " "
-            cfg.data_desc.slot_label_ids = {" ": 0}
-            cfg.data_desc.slot_weights = [1]
-
-            cfg.data_desc.pad_label = "O"
-            OmegaConf.set_struct(cfg, True)
-
     def _set_data_desc_to_cfg(self, cfg, data_dir, train_ds, validation_ds):
         """ Method creates MultiLabelIntentSlotDataDesc and copies generated values to cfg.data_desc. """
         # Save data from data desc to config - so it can be reused later, e.g. in inference.
@@ -146,14 +118,6 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
         self.register_artifact("class_labels.intent_labels_file", intent_labels_file)
         self.register_artifact("class_labels.slot_labels_file", slot_labels_file)
         OmegaConf.set_struct(cfg, True)
-
-    def _save_label_ids(self, label_ids: Dict[str, int], filename: str) -> None:
-        """ Saves label ids map to a file """
-        with open(filename, "w") as out:
-            labels, _ = zip(*sorted(label_ids.items(), key=lambda x: x[1]))
-            out.write("\n".join(labels))
-            logging.info(f"Labels: {label_ids}")
-            logging.info(f"Labels mapping saved to : {out.name}")
 
     def _reconfigure_classifier(self):
         """ Method reconfigures the classifier depending on the settings of model cfg.data_desc """
@@ -194,68 +158,6 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             mode="micro",
         )
 
-    def update_data_dir_for_training(self, data_dir: str, train_ds, validation_ds) -> None:
-        """
-        Update data directory and get data stats with Data Descriptor.
-        Also, reconfigures the classifier - to cope with data with e.g. different number of slots.
-
-        Args:
-            data_dir: path to data directory
-        """
-        logging.info(f"Setting data_dir to {data_dir}.")
-        self.data_dir = data_dir
-        # Update configuration with new data.
-        self._set_data_desc_to_cfg(self.cfg, data_dir, train_ds, validation_ds)
-        # Reconfigure the classifier for different settings (number of intents, slots etc.).
-        self._reconfigure_classifier()
-
-    def update_data_dir_for_testing(self, data_dir) -> None:
-        """
-        Update data directory.
-
-        Args:
-            data_dir: path to data directory
-        """
-        logging.info(f"Setting data_dir to {data_dir}.")
-        self.data_dir = data_dir
-
-    @typecheck()
-    def forward(self, input_ids, token_type_ids, attention_mask):
-        """
-        No special modification required for Lightning, define it as you normally would
-        in the `nn.Module` in vanilla PyTorch.
-        """
-        hidden_states = self.bert_model(
-            input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
-        )
-        intent_logits, slot_logits = self.classifier(hidden_states=hidden_states)
-        return intent_logits, slot_logits
-
-    def training_step(self, batch, batch_idx):
-        """
-        Lightning calls this inside the training loop with the data from the training dataloader
-        passed in as `batch`.
-        """
-        # forward pass
-        (input_ids, input_type_ids, input_mask, loss_mask, subtokens_mask, intent_labels, slot_labels,) = batch
-        intent_logits, slot_logits = self(
-            input_ids=input_ids, token_type_ids=input_type_ids, attention_mask=input_mask,
-        )
-
-        # calculate combined loss for intents and slots
-        intent_loss = self.intent_loss(logits=intent_logits, labels=intent_labels)
-        slot_loss = self.slot_loss(logits=slot_logits, labels=slot_labels, loss_mask=loss_mask)
-        train_loss = self.total_loss(loss_1=intent_loss, loss_2=slot_loss)
-        lr = self._optimizer.param_groups[0]["lr"]
-
-        self.log("train_loss", train_loss)
-        self.log("lr", lr, prog_bar=True)
-
-        return {
-            "loss": train_loss,
-            "lr": lr,
-        }
-
     def validation_step(self, batch, batch_idx):
         """
         Lightning calls this inside the validation loop with the data from the validation dataloader
@@ -289,64 +191,6 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             "slot_fn": self.slot_classification_report.fn,
             "slot_fp": self.slot_classification_report.fp,
         }
-
-    def validation_epoch_end(self, outputs):
-        """
-        Called at the end of validation to aggregate outputs.
-        :param outputs: list of individual outputs of each validation step.
-        """
-        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-
-        # calculate metrics and log classification report (separately for intents and slots)
-        (intent_precision, intent_recall, intent_f1, intent_report,) = self.intent_classification_report.compute()
-        logging.info(f"Intent report: {intent_report}")
-
-        (slot_precision, slot_recall, slot_f1, slot_report,) = self.slot_classification_report.compute()
-        logging.info(f"Slot report: {slot_report}")
-
-        self.log("val_loss", avg_loss)
-        self.log("intent_precision", intent_precision)
-        self.log("intent_recall", intent_recall)
-        self.log("intent_f1", intent_f1)
-        self.log("slot_precision", slot_precision)
-        self.log("slot_recall", slot_recall)
-        self.log("slot_f1", slot_f1)
-
-        self.intent_classification_report.reset()
-        self.slot_classification_report.reset()
-
-        return {
-            "val_loss": avg_loss,
-            "intent_precision": intent_precision,
-            "intent_recall": intent_recall,
-            "intent_f1": intent_f1,
-            "slot_precision": slot_precision,
-            "slot_recall": slot_recall,
-            "slot_f1": slot_f1,
-        }
-
-    def test_step(self, batch, batch_idx):
-        """
-        Lightning calls this inside the test loop with the data from the test dataloader
-        passed in as `batch`.
-        """
-        return self.validation_step(batch, batch_idx)
-
-    def test_epoch_end(self, outputs):
-        """
-        Called at the end of test to aggregate outputs.
-        :param outputs: list of individual outputs of each test step.
-        """
-        return self.validation_epoch_end(outputs)
-
-    def setup_training_data(self, train_data_config: Optional[DictConfig]):
-        self._train_dl = self._setup_dataloader_from_config(cfg=train_data_config)
-
-    def setup_validation_data(self, val_data_config: Optional[DictConfig]):
-        self._validation_dl = self._setup_dataloader_from_config(cfg=val_data_config)
-
-    def setup_test_data(self, test_data_config: Optional[DictConfig]):
-        self._test_dl = self._setup_dataloader_from_config(cfg=test_data_config)
 
     def _setup_dataloader_from_config(self, cfg: DictConfig):
         input_file = f"{self.data_dir}/{cfg.prefix}.tsv"
@@ -409,7 +253,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
             drop_last=test_ds.drop_last,
         )
 
-    def prediction_probabilities(self, queries: List[str], test_ds) -> List[List[int]]:
+    def prediction_probabilities(self, queries: List[str], test_ds) -> List[List[float]]:
         """
         Get prediction probabilities for the queries (intent and slots)
         Args:
@@ -509,9 +353,11 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
 
         if metrics_dict[max_f1_score][2] > self.max_f1:
             self.max_f1 = metrics_dict[max_f1_score][2]
-            self.threshold = max_f1_scored
+            self.threshold = max_f1_score
 
-    def predict_from_examples(self, queries: List[str], test_ds, threshold) -> List[List[str]]:
+    def predict_from_examples(
+        self, queries: List[str], test_ds, threshold
+    ) -> Tuple[List[List[str]], List[List[str]], List[List[int]]]:
         """
         Get prediction for the queries (intent and slots)
         Args:
@@ -599,16 +445,7 @@ class MultiLabelIntentSlotClassificationModel(NLPModel):
     @classmethod
     def list_available_models(cls) -> Optional[PretrainedModelInfo]:
         """
-        This method returns a list of pre-trained model which can be instantiated directly from NVIDIA's NGC cloud.
-
-        Returns:
-            List of available pre-trained models.
+        To be added
         """
         result = []
-        model = PretrainedModelInfo(
-            pretrained_model_name="Joint_Intent_Slot_Assistant",
-            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemonlpmodels/versions/1.0.0a5/files/Joint_Intent_Slot_Assistant.nemo",
-            description="This models is trained on this https://github.com/xliuhw/NLU-Evaluation-Data dataset which includes 64 various intents and 55 slots. Final Intent accuracy is about 87%, Slot accuracy is about 89%.",
-        )
-        result.append(model)
         return result

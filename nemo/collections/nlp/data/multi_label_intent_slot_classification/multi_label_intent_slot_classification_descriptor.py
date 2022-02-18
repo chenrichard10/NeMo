@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,10 +23,11 @@ from nemo.collections.nlp.data.data_utils.data_preprocessing import (
     get_multi_label_stats,
     if_exist,
 )
+from nemo.collections.nlp.data.intent_slot_classification import IntentSlotDataDesc
 from nemo.utils import logging
 
 
-class MultiLabelIntentSlotDataDesc:
+class MultiLabelIntentSlotDataDesc(IntentSlotDataDesc):
     """ Convert the raw data to the standard format supported by
     MultiLabelIntentSlotDataDesc.
 
@@ -68,7 +69,7 @@ class MultiLabelIntentSlotDataDesc:
         if not if_exist(data_dir, ["dict.intents.csv", "dict.slots.csv"]):
             raise FileNotFoundError(
                 "Make sure that your data follows the standard format "
-                "supported by JointIntentSlotDataset. Your data must "
+                "supported by MultiLabelIntentSlotDataset. Your data must "
                 "contain dict.intents.csv and dict.slots.csv."
             )
 
@@ -143,26 +144,3 @@ class MultiLabelIntentSlotDataDesc:
             if none_slot_label not in self.slots_label_ids:
                 raise ValueError(f"none_slot_label {none_slot_label} not " f"found in {self.slot_dict_file}.")
             self.pad_label = self.slots_label_ids[none_slot_label]
-
-    @staticmethod
-    def label2idx(file):
-        lines = open(file, "r").readlines()
-        lines = [line.strip() for line in lines if line.strip()]
-        labels = {lines[i]: i for i in range(len(lines))}
-        return labels
-
-    @staticmethod
-    def intent_slot_dicts(data_dir):
-        """
-        Return Intent and slot dictionaries
-        """
-        intent_dict_file = data_dir + "/dict.intents.csv"
-        slot_dict_file = data_dir + "/dict.slots.csv"
-
-        intents_labels = open(intent_dict_file, "r").readlines()
-        intents_labels = [line.strip() for line in intents_labels if line.strip()]
-
-        slots_labels = open(slot_dict_file, "r").readlines()
-        slots_labels = [line.strip() for line in slots_labels if line.strip()]
-
-        return intents_labels, slots_labels
