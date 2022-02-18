@@ -1,5 +1,6 @@
 import argparse
 import csv
+import itertools
 import os
 import shutil
 
@@ -24,7 +25,7 @@ def augment_nemo_data(source_dir, target_dir, num_mixed=100):
 
     # Get Slots Dictionary
     slots_dict = {}
-    slot_dict_file = f'{source_dir}/dict.slots.csv'
+    slot_file = f'{source_dir}/dict.slots.csv'
     o_slot_index = 0
 
     with open(slot_file, "r") as f:
@@ -101,7 +102,7 @@ if __name__ == "__main__":
         "--source_data_dir", required=True, type=str, help='path to the folder containing the dataset files'
     )
     parser.add_argument("--target_data_dir", required=True, type=str, help='path to save the processed dataset')
-    parser.add_argument("--num_mixed", required=True, type=str, help='Number of training examples per class to mix')
+    parser.add_argument("--num_mixed", type=str, help='Number of training examples per class to mix')
 
     args = parser.parse_args()
 
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     target_dir = args.target_data_dir
     num_mixed = args.num_mixed
 
-    convert_intent_augment_data(f'{source_dir}', f'{target_dir}')
+    augment_nemo_data(f'{source_dir}', f'{target_dir}', int(num_mixed))
     shutil.copyfile(f'{source_dir}/dict.intents.csv', f'{target_dir}/dict.intents.csv')
     shutil.copyfile(f'{source_dir}/dict.slots.csv', f'{target_dir}/dict.slots.csv')
     shutil.copyfile(f'{source_dir}/dev.tsv', f'{target_dir}/dev.tsv')
