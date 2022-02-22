@@ -927,6 +927,19 @@ pipeline {
             sh 'rm -rf checkpoints'
           }
         }
+        stage('L2: Multi-Label Intent and Slot Classification') {
+          steps {
+            sh 'cd examples/nlp/multi_label_intent_slot_classification && \
+            python multi_label_intent_slot_classification.py \
+            model.data_dir=/home/TestData/nlp/new_multiatis \
+            model.validation_ds.prefix=dev \
+            model.test_ds.prefix=dev \
+            trainer.gpus=[0] \
+            +trainer.fast_dev_run=true \
+            exp_manager.exp_dir=checkpoints'
+            sh 'rm -rf checkpoints'
+          }
+        }
       }
     }
 
