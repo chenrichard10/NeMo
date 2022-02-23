@@ -198,7 +198,7 @@ def get_label_stats(labels, outfile="stats.tsv", verbose=True):
     return total, freq_dict, max(labels.keys())
 
 
-def get_multi_label_stats(labels, outfile="stats.tsv", verbose=False):
+def get_multi_label_stats(labels, outfile="stats.tsv", verbose=True):
     """
     Args:
         labels: list of tuples containing labels to indices
@@ -208,21 +208,34 @@ def get_multi_label_stats(labels, outfile="stats.tsv", verbose=False):
         total (int): total number of labels
         freq_dict (list of tuples): each tuple represent class counts in the form of (negative, positive)
     """
-
     total = len(labels)
+    positive_class_total = 0
     out = open(outfile, "w")
     class_count_dict = {}
 
     # Get the count of each label in the label dictionary, both the positive and negative classes
     for label in labels:
         for label_index, val in enumerate(label):
-            if label_index not in  class_count_dict:
+            if label_index not in class_count_dict:
                 class_count_dict[label_index] = [0, 0]
 
             if val == 1:
+                positive_class_total += 1
                 class_count_dict[label_index][1] += 1
             else:
                 class_count_dict[label_index][0] += 1
+
+    if verbose:
+        three_most_frequent_classes = sorted(class_count_dict, key=lambda idx: class_count_dict[idx][1], reverse=True)
+
+        for cnt, idx in enumerate(three_most_frequent_classes):
+            if cnt > 2:
+                break
+
+            positives = class_count_dict[idx][1]
+            logging.info(
+                f"label: {idx}, {positives} out of {positive_class_total} ({(positives / positive_class_total)*100.0:.2f}%)."
+            )
 
     return total, class_count_dict, len(labels[0]) - 1
 

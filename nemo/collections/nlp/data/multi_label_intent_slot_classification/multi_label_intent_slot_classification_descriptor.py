@@ -123,7 +123,7 @@ class MultiLabelIntentSlotDataDesc(IntentSlotDataDesc):
             logging.info(f"Three most popular slots in {mode} mode:")
             slots_total, slots_label_freq, max_id = get_label_stats(merged_slots, infold + f"/{mode}_slot_stats.tsv")
 
-            logging.info(f"Total Number of Intents: {total_intents}")
+            logging.info(f"Total Number of Intent Labels: {total_intents}")
             logging.info(f"Intent Label Frequencies: {intent_label_freq}")
             logging.info(f"Total Number of Slots: {slots_total}")
             logging.info(f"Slots Label Frequencies: {slots_label_freq}")
