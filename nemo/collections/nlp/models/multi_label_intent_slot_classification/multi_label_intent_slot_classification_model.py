@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import onnx
 import torch
-from typing import Tuple
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from sklearn.metrics import classification_report, f1_score, precision_score, recall_score
@@ -28,7 +27,6 @@ from nemo.collections.common.losses import AggregatorLoss, BCEWithLogitsLoss, Cr
 from nemo.collections.nlp.data.multi_label_intent_slot_classification import (
     MultiLabelIntentSlotClassificationDataset,
     MultiLabelIntentSlotDataDesc,
-    MultiLabelIntentSlotInferenceDataset,
 )
 from nemo.collections.nlp.metrics.classification_report import ClassificationReport, MultiLabelClassificationReport
 from nemo.collections.nlp.models.intent_slot_classification import IntentSlotClassificationModel
@@ -68,17 +66,6 @@ class MultiLabelIntentSlotClassificationModel(IntentSlotClassificationModel):
 
         # init superclass
         super().__init__(cfg=cfg, trainer=trainer)
-
-        # Initialize Bert model
-        self.bert_model = get_lm_model(
-            pretrained_model_name=self.cfg.language_model.pretrained_model_name,
-            config_file=self.register_artifact("language_model.config_file", cfg.language_model.config_file),
-            config_dict=OmegaConf.to_container(self.cfg.language_model.config)
-            if self.cfg.language_model.config
-            else None,
-            checkpoint_file=self.cfg.language_model.lm_checkpoint,
-            vocab_file=self.register_artifact("tokenizer.vocab_file", cfg.tokenizer.vocab_file),
-        )
 
         # Enable setup methods.
         MultiLabelIntentSlotClassificationModel._set_model_restore_state(is_being_restored=False)
@@ -228,30 +215,6 @@ class MultiLabelIntentSlotClassificationModel(IntentSlotClassificationModel):
             pin_memory=cfg.pin_memory,
             drop_last=cfg.drop_last,
             collate_fn=dataset.collate_fn,
-        )
-
-    def _setup_infer_dataloader(self, queries: List[str], test_ds) -> "torch.utils.data.DataLoader":
-        """
-        Setup function for a infer data loader.
-        Args:
-            queries: text
-            batch_size: batch size to use during inference
-        Returns:
-            A pytorch DataLoader.
-        """
-
-        dataset = MultiLabelIntentSlotInferenceDataset(
-            tokenizer=self.tokenizer, queries=queries, max_seq_length=-1, do_lower_case=False,
-        )
-
-        return torch.utils.data.DataLoader(
-            dataset=dataset,
-            collate_fn=dataset.collate_fn,
-            batch_size=test_ds.batch_size,
-            shuffle=test_ds.shuffle,
-            num_workers=test_ds.num_workers,
-            pin_memory=test_ds.pin_memory,
-            drop_last=test_ds.drop_last,
         )
 
     def prediction_probabilities(self, queries: List[str], test_ds) -> List[List[float]]:

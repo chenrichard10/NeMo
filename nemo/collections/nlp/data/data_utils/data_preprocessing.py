@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -206,25 +206,25 @@ def get_multi_label_stats(labels, outfile="stats.tsv", verbose=False):
 
     Returns:
         total (int): total number of labels
-        freq_dict (list of tuples): each tuple represent class counts in the form of (negative, positive)d
+        freq_dict (list of tuples): each tuple represent class counts in the form of (negative, positive)
     """
 
     total = len(labels)
     out = open(outfile, "w")
-    freq_dict = {}
+    class_count_dict = {}
 
     # Get the count of each label in the label dictionary, both the positive and negative classes
     for label in labels:
         for label_index, val in enumerate(label):
-            if label_index not in freq_dict:
-                freq_dict[label_index] = [0, 0]
+            if label_index not in  class_count_dict:
+                class_count_dict[label_index] = [0, 0]
 
             if val == 1:
-                freq_dict[label_index][1] += 1
+                class_count_dict[label_index][1] += 1
             else:
-                freq_dict[label_index][0] += 1
+                class_count_dict[label_index][0] += 1
 
-    return total, freq_dict, len(labels[0]) - 1
+    return total, class_count_dict, len(labels[0]) - 1
 
 
 def partition_data(intent_queries, slot_tags, split=0.1):
