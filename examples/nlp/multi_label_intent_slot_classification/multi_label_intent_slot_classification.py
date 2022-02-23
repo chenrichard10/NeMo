@@ -15,7 +15,7 @@
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 
-from nemo.collections.nlp.models import MultiLabelIntentSlotClasssificationModel
+from nemo.collections.nlp.models import MultiLabelIntentSlotClassificationDataset
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
@@ -28,7 +28,7 @@ def main(cfg: DictConfig) -> None:
     exp_manager(trainer, cfg.get("exp_manager", None))
 
     # initialize the model using the config file
-    model = MultiLabelIntentSlotClasssificationModel(cfg.model, trainer=trainer)
+    model = MultiLabelIntentSlotClassificationDataset(cfg.model, trainer=trainer)
 
     # training
     logging.info("================================================================================================")

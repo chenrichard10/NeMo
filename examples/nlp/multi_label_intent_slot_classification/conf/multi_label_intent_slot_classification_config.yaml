@@ -37,7 +37,7 @@ model:
     pin_memory: false
 
   validation_ds:
-    prefix: test
+    prefix: dev
     batch_size: 32
     shuffle: false
     num_samples: -1
