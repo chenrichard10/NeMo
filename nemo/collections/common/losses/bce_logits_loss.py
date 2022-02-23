@@ -23,7 +23,9 @@ __all__ = ["BCEWithLogitsLoss"]
 
 class BCEWithLogitsLoss(nn.BCEWithLogitsLoss, Serialization, Typing):
     """
-    BCELoss
+    BCEWithLogitsLoss
+
+    https://pytorch.org/docs/1.9.1/generated/torch.nn.BCEWithLogitsLoss.html
     """
 
     @property
@@ -62,7 +64,7 @@ class BCEWithLogitsLoss(nn.BCEWithLogitsLoss, Serialization, Typing):
         """
         Args:
             logits (float): output of the classifier
-            labels (float): ground truth labels
+            labels List[int]: ground truth labels
         """
         labels = torch.stack(labels)
         labels = labels.t().float()

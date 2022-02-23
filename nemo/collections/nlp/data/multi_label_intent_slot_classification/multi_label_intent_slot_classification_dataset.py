@@ -20,16 +20,13 @@ import numpy as np
 
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 from nemo.collections.nlp.data.data_utils import get_stats
-from nemo.collections.nlp.data.intent_slot_classification import (
-    IntentSlotClassificationDataset,
-    IntentSlotInferenceDataset,
-)
+from nemo.collections.nlp.data.intent_slot_classification import IntentSlotClassificationDataset
 from nemo.collections.nlp.data.intent_slot_classification.intent_slot_classification_dataset import get_features
 from nemo.core.classes import Dataset
 from nemo.core.neural_types import ChannelType, LabelsType, MaskType, NeuralType
 from nemo.utils import logging
 
-__all__ = ['MultiLabelIntentSlotClassificationDataset', 'MultiLabelIntentSlotInferenceDataset']
+__all__ = ['MultiLabelIntentSlotClassificationDataset']
 
 
 class MultiLabelIntentSlotClassificationDataset(IntentSlotClassificationDataset):
@@ -45,7 +42,7 @@ class MultiLabelIntentSlotClassificationDataset(IntentSlotClassificationDataset)
 
     Args:
         input_file: file to sequence + label. the first line is header (sentence [tab] label)
-            each line should be [sentence][tab][label]
+            each line should be [sentence][tab][label] where label can be multiple labels separated by a comma
         slot_file: file to slot labels, each line corresponding to slot labels for a sentence in input_file. No header.
         max_seq_length: max sequence length minus 2 for [CLS] and [SEP]
         tokenizer: such as NemoBertTokenizer
@@ -129,12 +126,3 @@ class MultiLabelIntentSlotClassificationDataset(IntentSlotClassificationDataset)
         self.all_subtokens_mask = features[4]
         self.all_slots = features[5]
         self.all_intents = raw_intents
-
-
-class MultiLabelIntentSlotInferenceDataset(IntentSlotInferenceDataset):
-    """
-    Creates dataset to use for the task of joint intent
-    and slot classification with pretrained model.
-    This is to be used during inference only.
-    It uses list of queries as the input.
-    """
